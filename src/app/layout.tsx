@@ -12,10 +12,12 @@ export const metadata: Metadata = {
     "Crie carrosséis com templates, personalize com sua marca e exporte suas artes. Um espaço online para organizar seu conteúdo.",
   icons: {
     icon: [
-      { url: "/favicon.png", sizes: "any" },
-      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico?v=3", sizes: "any" },
+      { url: "/favicon.png?v=3", type: "image/png" },
+      { url: "/icon.png?v=3", type: "image/png" },
     ],
-    apple: [{ url: "/apple-icon.png" }],
+    apple: [{ url: "/apple-icon.png?v=3" }],
+    shortcut: ["/favicon.ico?v=3"],
   },
   openGraph: {
     type: "website",
