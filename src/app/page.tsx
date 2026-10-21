@@ -2426,10 +2426,6 @@ export default function MagicCarouselsApp() {
                   marginBottom: "28px",
                 }}
               >
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ color: "#facc15" }}>★★★★★</span>
-                  <strong>4.9/5</strong> (+5.200 criadores)
-                </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "#86efac" }}>
                   🛡️ <strong>7 dias</strong> de garantia incondicional
                 </span>
