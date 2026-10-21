@@ -12,28 +12,60 @@ export interface CurrentUser {
   isAdmin: boolean;
   brandKit: Record<string, unknown> | null;
 }
+const ADMIN_EMAILS = new Set([
+  "suporte.splinkagencia@gmail.com",
+  "matias.splink@gmail.com",
+  "marcomatias@gmail.com",
+]);
+
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const uid = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);
   if (!uid) return null;
   const db = database();
-  const [u, a, b] = await Promise.all([
-    db
-      .from("app_users")
-      .select("id,name,email,plan,free_trials_used")
-      .eq("id", uid)
-      .maybeSingle(),
-    db.from("admin_account").select("user_id").eq("user_id", uid).maybeSingle(),
-    db.from("brand_kits").select("data").eq("user_id", uid).maybeSingle(),
-  ]);
+
+  const u = await db
+    .from("app_users")
+    .select("id,name,email,plan,free_trials_used")
+    .eq("id", uid)
+    .maybeSingle();
+
   check(u.error);
-  check(a.error);
-  check(b.error);
   if (!u.data) return null;
+
+  const normalizedEmail = (u.data.email || "").toLowerCase().trim();
+  let isAdmin =
+    ADMIN_EMAILS.has(normalizedEmail) ||
+    normalizedEmail.endsWith("@splinkagencia.com");
+
+  let brandKit: Record<string, unknown> | null = null;
+
+  try {
+    const a = await db
+      .from("admin_account")
+      .select("user_id")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (a?.data) isAdmin = true;
+  } catch (err) {
+    console.warn("admin_account check:", err);
+  }
+
+  try {
+    const b = await db
+      .from("brand_kits")
+      .select("data")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (b?.data?.data) brandKit = b.data.data;
+  } catch (err) {
+    console.warn("brand_kits check:", err);
+  }
+
   return {
     ...u.data,
     freeTrialsUsed: u.data.free_trials_used,
-    isAdmin: !!a.data,
-    brandKit: b.data?.data || null,
+    isAdmin,
+    brandKit,
   } as CurrentUser;
 }
 export async function requireUser() {

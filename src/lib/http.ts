@@ -51,11 +51,19 @@ export function uuid(v: unknown) {
   return v;
 }
 export function check(error: unknown) {
-  if (error)
+  if (error) {
+    console.error("Database query error:", error);
+    const dbMsg =
+      typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message: unknown }).message)
+        : "";
     throw new HttpError(
       503,
-      "Não foi possível acessar os dados. Tente novamente.",
+      dbMsg
+        ? `Erro no banco de dados: ${dbMsg}`
+        : "Não foi possível acessar os dados. Tente novamente.",
     );
+  }
 }
 export async function limit(
   req: Request,
@@ -64,20 +72,29 @@ export async function limit(
   seconds = 60,
   identity?: string,
 ) {
-  const ip = process.env.VERCEL
-    ? req.headers.get("x-vercel-forwarded-for")?.split(",")[0] || "unknown"
-    : "local";
-  const key = createHash("sha256")
-    .update(action + ":" + (identity || ip))
-    .digest("hex");
-  const r = await database().rpc("app_rate_limit", {
-    p_key: key,
-    p_max: max,
-    p_seconds: seconds,
-  });
-  check(r.error);
-  if (!r.data)
-    throw new HttpError(429, "Muitas tentativas. Aguarde e tente novamente.");
+  try {
+    const ip = process.env.VERCEL
+      ? req.headers.get("x-vercel-forwarded-for")?.split(",")[0] || "unknown"
+      : "local";
+    const key = createHash("sha256")
+      .update(action + ":" + (identity || ip))
+      .digest("hex");
+    const r = await database().rpc("app_rate_limit", {
+      p_key: key,
+      p_max: max,
+      p_seconds: seconds,
+    });
+    if (r?.error) {
+      console.warn("Rate limit RPC indisponível (fail-open):", r.error.message);
+      return;
+    }
+    if (r && r.data === false) {
+      throw new HttpError(429, "Muitas tentativas. Aguarde e tente novamente.");
+    }
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    console.warn("Rate limit check falhou silenciosamente (fail-open):", err);
+  }
 }
 export function endpoint(fn: (req: Request) => Promise<unknown>) {
   return async (req: Request) => {
@@ -88,15 +105,17 @@ export function endpoint(fn: (req: Request) => Promise<unknown>) {
       });
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 500;
-      if (status === 500)
-        console.error("Falha interna", e instanceof Error ? e.name : "erro");
+      const errorMsg =
+        e instanceof HttpError
+          ? e.message
+          : e instanceof Error
+          ? e.message
+          : "Não foi possível concluir. Tente novamente.";
+      if (status === 500) {
+        console.error("Falha interna no endpoint:", e);
+      }
       return NextResponse.json(
-        {
-          error:
-            e instanceof HttpError
-              ? e.message
-              : "Não foi possível concluir. Tente novamente.",
-        },
+        { error: errorMsg },
         { status, headers: { "Cache-Control": "no-store" } },
       );
     }
