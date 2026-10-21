@@ -181,6 +181,7 @@ export default function MagicCarouselsApp() {
   const startXCreator = useRef(0);
   const scrollLeftLanding = useRef(0);
   const scrollLeftCreator = useRef(0);
+  const googleBtnContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================================
   // ESTADO DO CANVA STUDIO (CRIADOR DE TEMPLATE PERSONALIZADO)
@@ -543,9 +544,93 @@ export default function MagicCarouselsApp() {
     }
   };
 
-  // OAuth será habilitado quando os provedores estiverem configurados.
-  const handleSocialLogin = (_provider: "google" | "apple" | "facebook") => {
-    setAuthError("O login social ainda não está disponível. Entre ou crie sua conta com e-mail e senha.");
+  // Google Identity Services (Login com Google)
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId || !isAuthModalOpen) return;
+
+    const setupGoogle = () => {
+      const g = (window as unknown as { google?: { accounts?: { id?: { initialize: (config: object) => void; renderButton: (el: HTMLElement, opts: object) => void; prompt: () => void } } } }).google;
+      if (g?.accounts?.id) {
+        g.accounts.id.initialize({
+          client_id: clientId,
+          callback: async (response: { credential?: string }) => {
+            if (!response?.credential) return;
+            setAuthPending(true);
+            setAuthError("");
+            try {
+              const res = await fetch("/api/auth/social", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ credential: response.credential, provider: "google" }),
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) {
+                const session = await fetch("/api/auth/me").then((r) => r.json());
+                if (!session.user) throw new Error("Sessão não encontrada.");
+                setUser(session.user);
+                if (session.user.brandKit?.handle) setHandle(session.user.brandKit.handle);
+                if (session.user.brandKit?.avatarUrl) setAvatarImage(session.user.brandKit.avatarUrl);
+                if (session.user.plan === "LIFETIME") setIsPaidLifetime(true);
+                setIsAuthModalOpen(false);
+                setActiveTab("creator");
+              } else {
+                setAuthError(data.message || data.error || "Erro ao autenticar com o Google.");
+              }
+            } catch (err) {
+              console.error(err);
+              setAuthError("Erro de comunicação ao validar conta Google.");
+            } finally {
+              setAuthPending(false);
+            }
+          },
+        });
+
+        if (googleBtnContainerRef.current) {
+          googleBtnContainerRef.current.innerHTML = "";
+          g.accounts.id.renderButton(googleBtnContainerRef.current, {
+            theme: "outline",
+            size: "large",
+            type: "standard",
+            text: authModalMode === "login" ? "signin_with" : "signup_with",
+            shape: "rectangular",
+            logo_alignment: "left",
+            width: 320,
+          });
+        }
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      const existing = document.getElementById("google-gsi-script");
+      if (!existing) {
+        const s = document.createElement("script");
+        s.id = "google-gsi-script";
+        s.src = "https://accounts.google.com/gsi/client";
+        s.async = true;
+        s.defer = true;
+        s.onload = setupGoogle;
+        document.head.appendChild(s);
+      } else {
+        setupGoogle();
+      }
+    }
+  }, [isAuthModalOpen, authModalMode]);
+
+  const handleSocialLogin = (provider: "google" | "apple" | "facebook") => {
+    if (provider === "google") {
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        setAuthError("Para ativar o Login com Google, adicione a variável NEXT_PUBLIC_GOOGLE_CLIENT_ID na Vercel ou no .env.local.");
+        return;
+      }
+      const g = (window as unknown as { google?: { accounts?: { id?: { prompt: () => void } } } }).google;
+      if (g?.accounts?.id) {
+        g.accounts.id.prompt();
+      }
+      return;
+    }
+    setAuthError(`Login com ${provider === "apple" ? "Apple" : "Facebook"} estará disponível em breve. Utilize o Google ou crie sua conta com e-mail e senha.`);
   };
 
   // Login / Cadastro com e-mail e senha
@@ -1718,6 +1803,16 @@ export default function MagicCarouselsApp() {
 
             {/* BOTÕES SOCIAIS DINÂMICOS */}
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+              {/* Botão Oficial Google Identity Services */}
+              <div
+                ref={googleBtnContainerRef}
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  overflow: "hidden",
+                }}
+              />
               <button
                 type="button"
                 onClick={() => handleSocialLogin("google")}
