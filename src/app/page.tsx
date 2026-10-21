@@ -20,6 +20,11 @@ import type { Slide, CarouselFormat } from "@/lib/types";
 import { getTierForUserCount, LIVE_SOCIAL_PROOF, type TierInfo } from "@/lib/pricing-tiers";
 import { generatePostCaption, type GeneratedCaption } from "@/lib/caption-engine";
 import { SOCIAL_PROOF_PROFILES } from "@/data/social-proof-profiles";
+import {
+  INSPIRATION_CAROUSELS,
+  INSPIRATION_CATEGORIES,
+  type InspirationItem,
+} from "@/data/inspiration-carousels";
 
 interface UserProfile {
   id: string;
@@ -92,8 +97,35 @@ export default function MagicCarouselsApp() {
     seconds: 52,
   });
 
-  // Navegação principal: Landing, Criador, Templates, Canva Studio, Checkout
-  const [activeTab, setActiveTab] = useState<"landing" | "creator" | "templates" | "canva-studio" | "checkout">("landing");
+  // Navegação principal: Landing, Criador, Meus Projetos, Inspiração Viral, Templates, Canva Studio, Checkout
+  const [activeTab, setActiveTab] = useState<"landing" | "creator" | "templates" | "canva-studio" | "projects" | "inspiration" | "checkout">("landing");
+
+  // Estado da Área de Projetos do Usuário (Sincronizado via localStorage e /api/carousels)
+  const [savedProjects, setSavedProjects] = useState<Array<{
+    id: string;
+    title: string;
+    niche: string;
+    format: CarouselFormat;
+    template_id?: string;
+    slides: Slide[];
+    caption?: string;
+    updated_at?: string;
+  }>>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const local = localStorage.getItem("mc_saved_carousels");
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [projectsLoading, setProjectsLoading] = useState(false);
+
+  // Filtro da Galeria de Inspiração
+  const [selectedInspirationCat, setSelectedInspirationCat] = useState<string>("Todos");
+
+  // Modal de Finalização de Post (Legenda Magnética + Hashtags prontas para Instagram)
+  const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
 
   // Visualização mobile no criador (Alternar entre edição e prévia no celular)
   const [mobileViewMode, setMobileViewMode] = useState<"edit" | "preview">("preview");
@@ -186,22 +218,36 @@ export default function MagicCarouselsApp() {
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================================
-  // ESTADO DO CANVA STUDIO (CRIADOR DE TEMPLATE PERSONALIZADO)
+  // ESTADO DO ESTÚDIO DE TEMPLATES (CRIADOR DO ZERO COM TODAS FERRAMENTAS)
   // ============================================================
   const [studioName, setStudioName] = useState("Meu Template Pro");
   const [studioHeadingFont, setStudioHeadingFont] = useState<FontKey>("montserrat");
   const [studioBodyFont, setStudioBodyFont] = useState<FontKey>("inter");
-  const [studioBgType, setStudioBgType] = useState<"gradient" | "solid" | "vector">("gradient");
+  const [studioBgType, setStudioBgType] = useState<"gradient" | "solid" | "radial">("gradient");
   const [studioBg1, setStudioBg1] = useState("#0f172a");
   const [studioBg2, setStudioBg2] = useState("#1e293b");
   const [studioGradientAngle, setStudioGradientAngle] = useState(135);
+  const [studioPattern, setStudioPattern] = useState<"blueprint" | "grain" | "dots" | "geometric" | "lines" | "none">("blueprint");
   const [studioTextColor, setStudioTextColor] = useState("#ffffff");
+  const [studioMutedColor, setStudioMutedColor] = useState("#94a3b8");
   const [studioAccentColor, setStudioAccentColor] = useState("#f97316");
   const [studioSurfaceColor, setStudioSurfaceColor] = useState("#1e293b");
+  const [studioCardOpacity, setStudioCardOpacity] = useState<number>(85);
   const [studioStyle, setStudioStyle] = useState<TemplateStyle>("vector-business");
   const [studioDecoration, setStudioDecoration] = useState<Decoration>("geometric-vector");
   const [studioUppercase, setStudioUppercase] = useState(false);
   const [studioBorderRadius, setStudioBorderRadius] = useState<number>(24);
+  const [studioBorderWidth, setStudioBorderWidth] = useState<number>(1);
+  const [studioBorderStyle, setStudioBorderStyle] = useState<"solid" | "glow" | "dashed" | "none">("solid");
+  const [studioShadow, setStudioShadow] = useState<"deep" | "glow" | "soft" | "none">("deep");
+  const [studioTitleSize, setStudioTitleSize] = useState<number>(24);
+  const [studioLetterSpacing, setStudioLetterSpacing] = useState<"normal" | "tight" | "wide">("normal");
+  const [studioTextAlign, setStudioTextAlign] = useState<"left" | "center">("left");
+  const [studioNumberingStyle, setStudioNumberingStyle] = useState<"pill" | "bar" | "dots" | "minimal" | "none">("pill");
+  const [studioSwipeStyle, setStudioSwipeStyle] = useState<"arrow" | "pill" | "hand" | "none">("arrow");
+  const [studioBrandPosition, setStudioBrandPosition] = useState<"top-left" | "top-right" | "bottom-left" | "bottom-right">("top-left");
+  const [studioPreviewSlide, setStudioPreviewSlide] = useState<0 | 1 | 2>(0);
+  const [studioPreviewFormat, setStudioPreviewFormat] = useState<CarouselFormat>("4:5");
 
   // Checkout hospedado no Mercado Pago.
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "pending" | "paid" | "error">("idle");
@@ -288,6 +334,141 @@ export default function MagicCarouselsApp() {
     const ping = () => { if(document.visibilityState === "visible") fetch("/api/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"/" + activeTab})}).catch(()=>{}); };
     ping(); const timer = setInterval(ping,30000); return () => clearInterval(timer);
   }, [user?.id, activeTab]);
+
+  // Carregamento de Projetos do Usuário (Nuvem + LocalStorage)
+  const loadUserProjects = async () => {
+    try {
+      setProjectsLoading(true);
+      if (user?.id) {
+        const res = await fetch("/api/carousels");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setSavedProjects(data);
+            try { localStorage.setItem("mc_saved_carousels", JSON.stringify(data)); } catch {}
+            return;
+          }
+        }
+      }
+      const local = localStorage.getItem("mc_saved_carousels");
+      if (local) {
+        setSavedProjects(JSON.parse(local));
+      }
+    } catch (e) {
+      console.error("Erro ao carregar projetos:", e);
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUserProjects();
+  }, [user?.id]);
+
+  // Ações nos Projetos do Usuário
+  const handleLoadProject = (proj: {
+    id: string;
+    title: string;
+    niche: string;
+    format: CarouselFormat;
+    template_id?: string;
+    slides: Slide[];
+    caption?: string;
+    appearance?: Record<string, unknown>;
+  }) => {
+    setCarouselId(proj.id);
+    setSlides(proj.slides || []);
+    setCarouselTitle(proj.title);
+    setTopic(proj.title);
+    setFormat(proj.format || "4:5");
+    if (proj.niche) setSelectedNiche(proj.niche);
+    if (proj.template_id) setCurrentTemplateId(proj.template_id);
+    if (proj.caption) {
+      setCarouselCaption(proj.caption);
+      setEditedCaptionText(proj.caption);
+    }
+    setActiveSlideIndex(0);
+    setActiveTab("creator");
+    scrollToSlide(0, "creator");
+  };
+
+  const handleDuplicateProject = async (proj: {
+    id: string;
+    title: string;
+    niche: string;
+    format: CarouselFormat;
+    template_id?: string;
+    slides: Slide[];
+    caption?: string;
+  }) => {
+    const duplicatedSlides = JSON.parse(JSON.stringify(proj.slides || []));
+    const duplicatedTitle = `${proj.title} (Cópia)`;
+    const newId = `proj_${Date.now()}`;
+    const duplicatedProj = {
+      ...proj,
+      id: newId,
+      title: duplicatedTitle,
+      updated_at: new Date().toISOString(),
+      slides: duplicatedSlides,
+    };
+    setSavedProjects((prev) => {
+      const updated = [duplicatedProj, ...prev];
+      try { localStorage.setItem("mc_saved_carousels", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    if (user?.id) {
+      try {
+        await fetch("/api/carousels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: duplicatedTitle,
+            niche: proj.niche || selectedNiche,
+            templateId: proj.template_id || currentTemplateId,
+            slides: duplicatedSlides,
+            caption: proj.caption || "",
+            format: proj.format || "4:5",
+          }),
+        });
+        loadUserProjects();
+      } catch {}
+    }
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este carrossel?")) return;
+    setSavedProjects((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      try { localStorage.setItem("mc_saved_carousels", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    if (user?.id && !id.startsWith("local_") && !id.startsWith("proj_")) {
+      try {
+        await fetch(`/api/carousels/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Erro ao excluir carrossel:", err);
+      }
+    }
+    if (carouselId === id) {
+      setCarouselId(null);
+    }
+  };
+
+  // Carregar modelo de Inspiração direto no Criador
+  const handleApplyInspiration = (item: InspirationItem) => {
+    setCarouselId(null);
+    setSlides(JSON.parse(JSON.stringify(item.slides)));
+    setCarouselTitle(item.title);
+    setTopic(item.title);
+    setFormat(item.format);
+    if (item.templateId) setCurrentTemplateId(item.templateId);
+    if (item.niche) setSelectedNiche(item.niche);
+    setCarouselCaption(item.suggestedCaption);
+    setEditedCaptionText(item.suggestedCaption);
+    setActiveSlideIndex(0);
+    setActiveTab("creator");
+    scrollToSlide(0, "creator");
+  };
 
   // Controle de Notificações de Prova Social (Surge aos 3.5s, dura 6.5s e alterna a cada 30s entre 200+ perfis)
   useEffect(() => {
@@ -542,7 +723,23 @@ export default function MagicCarouselsApp() {
       const data = await res.json();
       if (!res.ok) { if(res.status===402){setPaywallMessage(data.error);setIsPaywallOpen(true);} throw new Error(data.error || "Não foi possível salvar."); }
       if (!id) { setCarouselId(data.id); setUser(prev => prev ? {...prev,freeTrialsUsed:prev.freeTrialsUsed + 1} : prev); window.history.replaceState(null,"","/?project=" + data.id); }
-      setSaveMessage("Projeto salvo na sua conta.");
+      const currentSaved = {
+        id: data.id || id || `proj_${Date.now()}`,
+        title: (title || topic).slice(0, 140),
+        niche: selectedNiche,
+        format,
+        template_id: currentTemplateId,
+        slides: nextSlides,
+        caption,
+        updated_at: new Date().toISOString(),
+      };
+      setSavedProjects((prev) => {
+        const idx = prev.findIndex((p) => p.id === currentSaved.id);
+        const updated = idx >= 0 ? prev.map((p, i) => (i === idx ? currentSaved : p)) : [currentSaved, ...prev];
+        try { localStorage.setItem("mc_saved_carousels", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      setSaveMessage("Projeto salvo na sua conta com sucesso!");
       return true;
     } catch(error) { setSaveMessage(error instanceof Error ? error.message : "Erro ao salvar."); return false; }
     finally { setSaving(false); }
@@ -964,7 +1161,7 @@ export default function MagicCarouselsApp() {
     }
   };
 
-  // Salvar Template Personalizado no Canva Studio
+  // Salvar Template Personalizado no Estúdio
   const handleSaveCustomTemplate = () => {
     const newId = `custom_${Date.now()}`;
     const newTpl: Template = {
@@ -978,12 +1175,12 @@ export default function MagicCarouselsApp() {
         bg: studioBg1,
         bg2: studioBg2,
         text: studioTextColor,
-        muted: studioTextColor + "B3",
+        muted: studioMutedColor,
         accent: studioAccentColor,
         accent2: studioBg1,
         surface: studioSurfaceColor,
         surfaceText: studioTextColor,
-        borderColor: studioAccentColor + "33",
+        borderColor: studioAccentColor + "40",
       },
       fonts: {
         heading: studioHeadingFont,
@@ -997,11 +1194,22 @@ export default function MagicCarouselsApp() {
     setCustomTemplates(updated);
     try {
       localStorage.setItem("mc_custom_templates", JSON.stringify(updated));
-    } catch {
-      // ignora
+    } catch {}
+    if (user?.id) {
+      fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newTpl.name, appearance: newTpl }),
+      }).catch(() => {});
     }
     setCurrentTemplateId(newId);
-    alert(`🎉 Template "${studioName}" salvo e aplicado com sucesso!`);
+    setCustomBgColor(studioBgType === "solid" ? studioBg1 : "");
+    setCustomTextColor(studioTextColor);
+    setCustomAccentColor(studioAccentColor);
+    setIsUppercase(studioUppercase);
+    setTitleFontSize(studioTitleSize);
+    setTextAlign(studioTextAlign);
+    alert(`🎉 Template "${studioName}" salvo com sucesso e aplicado no seu carrossel!`);
     setActiveTab("creator");
   };
 
@@ -1354,7 +1562,7 @@ export default function MagicCarouselsApp() {
             <button
               onClick={() => setActiveTab("creator")}
               style={{
-                padding: "8px 16px",
+                padding: "8px 14px",
                 borderRadius: "9999px",
                 fontWeight: 700,
                 fontSize: "13px",
@@ -1364,12 +1572,42 @@ export default function MagicCarouselsApp() {
                 color: activeTab === "creator" ? "#f472b6" : "#94a3b8",
               }}
             >
-              🎨 Criar Carrossel
+              🎨 Criar
+            </button>
+            <button
+              onClick={() => setActiveTab("projects")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "9999px",
+                fontWeight: 700,
+                fontSize: "13px",
+                cursor: "pointer",
+                border: "none",
+                background: activeTab === "projects" ? "rgba(225, 48, 108, 0.2)" : "transparent",
+                color: activeTab === "projects" ? "#f472b6" : "#94a3b8",
+              }}
+            >
+              📁 Meus Projetos {savedProjects.length > 0 ? `(${savedProjects.length})` : ""}
+            </button>
+            <button
+              onClick={() => setActiveTab("inspiration")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "9999px",
+                fontWeight: 700,
+                fontSize: "13px",
+                cursor: "pointer",
+                border: "none",
+                background: activeTab === "inspiration" ? "rgba(225, 48, 108, 0.2)" : "transparent",
+                color: activeTab === "inspiration" ? "#f472b6" : "#94a3b8",
+              }}
+            >
+              💡 Inspiração Viral
             </button>
             <button
               onClick={() => setActiveTab("templates")}
               style={{
-                padding: "8px 16px",
+                padding: "8px 14px",
                 borderRadius: "9999px",
                 fontWeight: 700,
                 fontSize: "13px",
@@ -1379,37 +1617,37 @@ export default function MagicCarouselsApp() {
                 color: activeTab === "templates" ? "#ffffff" : "#94a3b8",
               }}
             >
-              📂 120+ Templates por Profissão
+              📂 120+ Modelos
             </button>
             <button
               onClick={() => setActiveTab("canva-studio")}
               style={{
-                padding: "8px 16px",
+                padding: "8px 14px",
                 borderRadius: "9999px",
                 fontWeight: 700,
                 fontSize: "13px",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "canva-studio" ? "var(--ig-sunset)" : "transparent",
+                background: activeTab === "canva-studio" ? "var(--ig-sunset)" : "rgba(255, 255, 255, 0.04)",
                 color: "#ffffff",
               }}
             >
-              ✨ Canva Studio
+              🛠️ Criar do Zero
             </button>
             <button
               onClick={() => setActiveTab("landing")}
               style={{
-                padding: "8px 14px",
+                padding: "8px 12px",
                 borderRadius: "9999px",
                 fontWeight: 700,
-                fontSize: "12.5px",
+                fontSize: "12px",
                 cursor: "pointer",
                 border: "none",
                 background: "transparent",
                 color: "#94a3b8",
               }}
             >
-              🚀 Ver Página de Vendas
+              🚀 Vendas
             </button>
           </nav>
         )}
@@ -2330,6 +2568,207 @@ export default function MagicCarouselsApp() {
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE FINALIZAÇÃO DE POST: LEGENDA MAGNÉTICA & HASHTAGS ESTRATÉGICAS */}
+      {isFinalizeModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.88)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "linear-gradient(180deg, #161622 0%, #0d0d14 100%)",
+              border: "1px solid rgba(225, 48, 108, 0.4)",
+              borderRadius: "32px",
+              padding: "36px 30px",
+              maxWidth: "600px",
+              width: "100%",
+              boxShadow: "0 25px 70px rgba(0,0,0,0.95), 0 0 50px rgba(225, 48, 108, 0.2)",
+              position: "relative",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setIsFinalizeModalOpen(false)}
+              style={{
+                position: "absolute",
+                top: "18px",
+                right: "18px",
+                background: "rgba(255,255,255,0.06)",
+                border: "none",
+                color: "#94a3b8",
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                cursor: "pointer",
+                fontSize: "14px",
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.35)", padding: "4px 14px", borderRadius: "9999px", color: "#86efac", fontSize: "11px", fontWeight: 800, marginBottom: "12px" }}>
+              <span>🎉 CARROSSEL PRONTO PARA POSTAR</span>
+            </div>
+
+            <h3 style={{ fontSize: "24px", fontWeight: 900, color: "#ffffff", letterSpacing: "-0.5px", marginBottom: "6px" }}>
+              Legenda Magnética & Hashtags
+            </h3>
+            <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.5, marginBottom: "20px" }}>
+              Geramos uma legenda otimizada para o algoritmo do Instagram: gancho antes do &quot;... mais&quot;, estrutura em tópicos respiráveis e 15 hashtags nichadas de alta relevância.
+            </p>
+
+            {/* CAIXA DE TEXTO DA LEGENDA */}
+            <div style={{ marginBottom: "18px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#cbd5e1" }}>
+                  ✍️ Texto Formatado da Legenda (você pode editar antes de copiar):
+                </span>
+                <span style={{ fontSize: "11px", color: "#64748b" }}>
+                  {activeCaptionText.length} caracteres
+                </span>
+              </div>
+
+              <textarea
+                rows={9}
+                className="studio-input"
+                value={activeCaptionText}
+                onChange={(e) => setEditedCaptionText(e.target.value)}
+                style={{ width: "100%", fontSize: "12.5px", lineHeight: 1.6, resize: "vertical", fontFamily: "inherit", borderRadius: "14px" }}
+              />
+            </div>
+
+            {/* HASHTAGS INDIVIDUAIS */}
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "14px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", marginBottom: "22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#ffffff" }}>
+                  #️⃣ Hashtags Estratégicas ({postCaptionData?.hashtags.length || 0}):
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyHashtagsOnly}
+                  style={{
+                    background: tagsCopied ? "#22c55e" : "rgba(255,255,255,0.08)",
+                    border: "none",
+                    color: "#ffffff",
+                    padding: "4px 10px",
+                    borderRadius: "6px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {tagsCopied ? "✓ Tags Copiadas!" : "Copiar Apenas Tags"}
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {postCaptionData?.hashtags.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      background: "rgba(225, 48, 108, 0.12)",
+                      border: "1px solid rgba(225, 48, 108, 0.25)",
+                      color: "#f472b6",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      padding: "3px 8px",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* BOTÕES DE AÇÃO */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={handleCopyFullCaption}
+                className="btn-primary-ig"
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: "14px",
+                  fontSize: "14px",
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                }}
+              >
+                <span>{captionCopied ? "✅ Legenda Completa Copiada!" : "📋 Copiar Legenda Completa com Hashtags"}</span>
+              </button>
+
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await persistCarousel();
+                    alert("💾 Post e Legenda salvos com sucesso na sua Área de Projetos!");
+                  }}
+                  style={{
+                    flex: 1,
+                    background: "rgba(34, 197, 94, 0.15)",
+                    border: "1px solid rgba(34, 197, 94, 0.35)",
+                    color: "#86efac",
+                    padding: "11px",
+                    borderRadius: "12px",
+                    fontSize: "12.5px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>💾</span>
+                  <span>Salvar nos Meus Projetos</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsFinalizeModalOpen(false)}
+                  style={{
+                    flex: 1,
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#cbd5e1",
+                    padding: "11px",
+                    borderRadius: "12px",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Continuar Editando
+                </button>
+              </div>
+            </div>
+
+            {/* DICA DE ENGAJAMENTO */}
+            <div style={{ marginTop: "18px", background: "rgba(255,255,255,0.02)", padding: "10px 14px", borderRadius: "10px", fontSize: "11.5px", color: "#64748b", lineHeight: 1.5 }}>
+              💡 <strong>Dica do Algoritmo:</strong> Ao postar no Instagram, responda aos 3 primeiros comentários nos primeiros 15 minutos para sinalizar pico de retenção e ativar o motor de distribuição no feed explorar!
+            </div>
           </div>
         </div>
       )}
@@ -3449,8 +3888,76 @@ export default function MagicCarouselsApp() {
                   gap: "16px",
                 }}
               >
-                {/* BARRA DE AÇÕES RÁPIDAS DE EXPORTAÇÃO */}
+                {/* SELETOR DE FORMATO DO CARROSSEL */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {(["4:5", "3:4", "1:1", "9:16"] as CarouselFormat[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => setFormat(fmt)}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        border: "none",
+                        fontSize: "11.5px",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        background: format === fmt ? "var(--ig-sunset)" : "transparent",
+                        color: format === fmt ? "#ffffff" : "#94a3b8",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {fmt === "4:5" ? "4:5 Feed" : fmt === "3:4" ? "3:4 Alto 🔥" : fmt === "1:1" ? "1:1 Quadrado" : "9:16 Stories"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* BARRA DE AÇÕES RÁPIDAS DE EXPORTAÇÃO E FINALIZAÇÃO */}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
+                  <button
+                    type="button"
+                    onClick={() => persistCarousel()}
+                    disabled={saving}
+                    style={{
+                      background: "rgba(34, 197, 94, 0.15)",
+                      border: "1px solid rgba(34, 197, 94, 0.4)",
+                      color: "#86efac",
+                      padding: "8px 14px",
+                      borderRadius: "10px",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>💾</span>
+                    <span>{saving ? "Salvando..." : "Salvar Projeto"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsFinalizeModalOpen(true)}
+                    style={{
+                      background: "linear-gradient(135deg, #e1306c 0%, #f77737 100%)",
+                      border: "none",
+                      color: "#ffffff",
+                      padding: "8px 16px",
+                      borderRadius: "10px",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 4px 14px rgba(225, 48, 108, 0.35)",
+                    }}
+                  >
+                    <span>🎉</span>
+                    <span>Finalizar & Legenda</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleAddSlide}
@@ -3458,9 +3965,9 @@ export default function MagicCarouselsApp() {
                       background: "rgba(255,255,255,0.08)",
                       border: "1px solid rgba(255,255,255,0.12)",
                       color: "#ffffff",
-                      padding: "8px 14px",
+                      padding: "8px 12px",
                       borderRadius: "10px",
-                      fontSize: "12.5px",
+                      fontSize: "12px",
                       fontWeight: 700,
                       cursor: "pointer",
                     }}
@@ -3475,14 +3982,14 @@ export default function MagicCarouselsApp() {
                       background: "rgba(255,255,255,0.08)",
                       border: "1px solid rgba(255,255,255,0.12)",
                       color: "#ffffff",
-                      padding: "8px 14px",
+                      padding: "8px 12px",
                       borderRadius: "10px",
-                      fontSize: "12.5px",
+                      fontSize: "12px",
                       fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    ⬇️ Slide Atual (PNG)
+                    ⬇️ PNG Slide
                   </button>
 
                   <button
@@ -3492,9 +3999,9 @@ export default function MagicCarouselsApp() {
                       background: "rgba(255,255,255,0.08)",
                       border: "1px solid rgba(255,255,255,0.12)",
                       color: "#ffffff",
-                      padding: "8px 14px",
+                      padding: "8px 12px",
                       borderRadius: "10px",
-                      fontSize: "12.5px",
+                      fontSize: "12px",
                       fontWeight: 700,
                       cursor: "pointer",
                     }}
@@ -3506,9 +4013,9 @@ export default function MagicCarouselsApp() {
                     type="button"
                     onClick={handleDownloadPdf}
                     className="btn-primary-ig"
-                    style={{ padding: "8px 16px", fontSize: "12.5px" }}
+                    style={{ padding: "8px 14px", fontSize: "12px" }}
                   >
-                    📄 Baixar PDF LinkedIn
+                    📄 PDF LinkedIn
                   </button>
                 </div>
 
@@ -3865,6 +4372,378 @@ export default function MagicCarouselsApp() {
         )}
 
         {/* ============================================================ */}
+        {/* ABA: MEUS PROJETOS & HISTÓRICO DE CARROSSÉIS               */}
+        {/* ============================================================ */}
+        {activeTab === "projects" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+              <div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
+                  HISTÓRICO DE CRIAÇÕES & PRODUÇÃO
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
+                  Meus Projetos & Carrosséis ({savedProjects.length})
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+                  Retome a edição, duplique ou faça o download dos seus carrosséis a qualquer momento.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCarouselId(null);
+                    setTopic("Novo carrossel estratégico");
+                    setCarouselTitle("Novo carrossel estratégico");
+                    setSlides(buildNicheCarousel(selectedNiche, 7, "Novo carrossel estratégico").slides);
+                    setActiveTab("creator");
+                  }}
+                  className="btn-primary-ig"
+                  style={{ padding: "10px 22px", fontSize: "13px" }}
+                >
+                  ➕ Criar Novo Carrossel
+                </button>
+              </div>
+            </div>
+
+            {projectsLoading && (
+              <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                <div style={{ fontSize: "24px", marginBottom: "8px" }}>⏳</div>
+                <span>Carregando seus projetos...</span>
+              </div>
+            )}
+
+            {!projectsLoading && savedProjects.length === 0 ? (
+              <div
+                style={{
+                  background: "rgba(18, 18, 24, 0.6)",
+                  border: "2px dashed rgba(255, 255, 255, 0.12)",
+                  borderRadius: "28px",
+                  padding: "60px 24px",
+                  textAlign: "center",
+                  maxWidth: "600px",
+                  margin: "20px auto",
+                }}
+              >
+                <div style={{ width: "70px", height: "70px", borderRadius: "50%", background: "rgba(225, 48, 108, 0.15)", border: "1px solid rgba(225, 48, 108, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px", margin: "0 auto 18px" }}>
+                  📁
+                </div>
+                <h3 style={{ fontSize: "22px", fontWeight: 900, color: "#ffffff", marginBottom: "8px" }}>
+                  Você ainda não possui projetos salvos
+                </h3>
+                <p style={{ color: "#94a3b8", fontSize: "14px", lineHeight: 1.6, marginBottom: "24px" }}>
+                  Comece gerando um carrossel no Criador com inteligência artificial ou escolha um dos nossos 120+ templates por profissão!
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("creator")}
+                    className="btn-primary-ig"
+                    style={{ padding: "12px 24px", fontSize: "13.5px" }}
+                  >
+                    🎨 Criar Meu Primeiro Carrossel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("inspiration")}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#ffffff",
+                      padding: "12px 20px",
+                      borderRadius: "9999px",
+                      fontSize: "13.5px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    💡 Ver Ideias de Inspiração
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "24px" }}>
+                {savedProjects.map((proj) => {
+                  const firstSlide = proj.slides?.[0];
+                  const projTpl = allTemplates.find((t) => t.id === proj.template_id) || activeTemplate;
+                  const bgCard = projTpl.style === "gradient" || projTpl.style === "vector-business"
+                    ? `linear-gradient(135deg, ${projTpl.colors.bg} 0%, ${projTpl.colors.bg2} 100%)`
+                    : projTpl.colors.bg;
+
+                  return (
+                    <div
+                      key={proj.id}
+                      style={{
+                        background: "rgba(18, 18, 24, 0.85)",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        borderRadius: "22px",
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        transition: "transform 0.2s ease, border-color 0.2s ease",
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                      }}
+                    >
+                      {/* Miniatura do Carrossel */}
+                      <div
+                        onClick={() => handleLoadProject(proj)}
+                        style={{
+                          height: "190px",
+                          background: bgCard,
+                          color: projTpl.colors.text,
+                          padding: "18px",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          cursor: "pointer",
+                          position: "relative",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "10px", fontWeight: 900, background: "rgba(0,0,0,0.45)", color: "#ffffff", padding: "3px 8px", borderRadius: "9999px" }}>
+                            {proj.format || "4:5"}
+                          </span>
+                          <span style={{ fontSize: "11px", fontWeight: 800, color: projTpl.colors.accent }}>
+                            {proj.slides?.length || 7} lâminas
+                          </span>
+                        </div>
+
+                        <div>
+                          <span style={{ fontSize: "9.5px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", color: projTpl.colors.accent }}>
+                            {proj.niche || "geral"}
+                          </span>
+                          <h4 style={{ fontSize: "16px", fontWeight: 900, lineHeight: 1.25, marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                            {firstSlide?.title || proj.title}
+                          </h4>
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", opacity: 0.8 }}>
+                          <span>@{handle}</span>
+                          <span>clique para editar →</span>
+                        </div>
+                      </div>
+
+                      {/* Informações e Ações do Projeto */}
+                      <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "12px", flex: 1, justifyContent: "space-between" }}>
+                        <div>
+                          <div style={{ fontSize: "13.5px", fontWeight: 800, color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {proj.title}
+                          </div>
+                          <span style={{ fontSize: "11px", color: "#64748b" }}>
+                            {proj.updated_at ? new Date(proj.updated_at).toLocaleDateString("pt-BR") : "Projeto Recente"}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleLoadProject(proj)}
+                            style={{
+                              flex: 1,
+                              background: "var(--ig-sunset)",
+                              border: "none",
+                              color: "#ffffff",
+                              padding: "8px 12px",
+                              borderRadius: "10px",
+                              fontSize: "12px",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <span>✏️</span>
+                            <span>Editar</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateProject(proj)}
+                            title="Duplicar este carrossel"
+                            style={{
+                              background: "rgba(255,255,255,0.06)",
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              color: "#cbd5e1",
+                              padding: "8px 10px",
+                              borderRadius: "10px",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            📋
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProject(proj.id)}
+                            title="Excluir este carrossel"
+                            style={{
+                              background: "rgba(239, 68, 68, 0.12)",
+                              border: "1px solid rgba(239, 68, 68, 0.25)",
+                              color: "#f87171",
+                              padding: "8px 10px",
+                              borderRadius: "10px",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* ABA: GALERIA DE INSPIRAÇÃO VIRAL & GANCHOS COMPROVADOS       */}
+        {/* ============================================================ */}
+        {activeTab === "inspiration" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+              <div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
+                  FRAMEWORKS DE ALTO ENGAJAMENTO VALIDADOS
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
+                  Inspiração & Ganchos Virais ({INSPIRATION_CAROUSELS.length})
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+                  Estruturas psicológicas prontas para modelar. Clique em &quot;Usar Esta Estrutura&quot; para carregar direto no seu editor.
+                </p>
+              </div>
+            </div>
+
+            {/* SELETOR DE CATEGORIAS DE INSPIRAÇÃO EM PILLS */}
+            <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "8px" }}>
+              {INSPIRATION_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedInspirationCat(cat)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "9999px",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: selectedInspirationCat === cat ? "var(--ig-sunset)" : "rgba(255,255,255,0.04)",
+                    color: "#ffffff",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {cat} {cat === "Todos" ? `(${INSPIRATION_CAROUSELS.length})` : `(${INSPIRATION_CAROUSELS.filter((i) => i.category === cat).length})`}
+                </button>
+              ))}
+            </div>
+
+            {/* GRID DE CARDS DE INSPIRAÇÃO */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" }}>
+              {INSPIRATION_CAROUSELS.filter(
+                (item) => selectedInspirationCat === "Todos" || item.category === selectedInspirationCat
+              ).map((item) => {
+                const itemTpl = allTemplates.find((t) => t.id === item.templateId) || activeTemplate;
+                const bgItem = itemTpl.style === "gradient" || itemTpl.style === "vector-business"
+                  ? `linear-gradient(135deg, ${itemTpl.colors.bg} 0%, ${itemTpl.colors.bg2} 100%)`
+                  : itemTpl.colors.bg;
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      background: "rgba(18, 18, 24, 0.85)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      borderRadius: "24px",
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column",
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {/* Miniatura do Gancho */}
+                    <div
+                      style={{
+                        height: "210px",
+                        background: bgItem,
+                        color: itemTpl.colors.text,
+                        padding: "20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        position: "relative",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 800, background: "rgba(0,0,0,0.5)", color: "#ffffff", padding: "3px 10px", borderRadius: "9999px" }}>
+                          {item.format} • {item.slides.length} lâminas
+                        </span>
+                        <span style={{ fontSize: "10.5px", fontWeight: 900, background: "rgba(34, 197, 94, 0.2)", border: "1px solid rgba(34, 197, 94, 0.4)", color: "#86efac", padding: "3px 9px", borderRadius: "9999px" }}>
+                          {item.metricBadge}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span style={{ fontSize: "10px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "1px", color: itemTpl.colors.accent }}>
+                          {item.slides[0]?.kicker || "GANCHO MATADOR"}
+                        </span>
+                        <h4 style={{ fontSize: "17px", fontWeight: 900, lineHeight: 1.25, marginTop: "6px" }}>
+                          {item.title}
+                        </h4>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10.5px", opacity: 0.85 }}>
+                        <span>@{handle}</span>
+                        <span>deslize para ver →</span>
+                      </div>
+                    </div>
+
+                    {/* Explicação de Por que Funciona & Botão */}
+                    <div style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "14px", flex: 1, justifyContent: "space-between" }}>
+                      <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "12px", borderLeft: "3px solid #f472b6" }}>
+                        <strong style={{ fontSize: "11px", color: "#f472b6", display: "block", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "3px" }}>
+                          🧠 Por que esse modelo viraliza:
+                        </strong>
+                        <p style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: 1.45, margin: 0 }}>
+                          {item.whyItWorks}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyInspiration(item)}
+                        className="btn-primary-ig"
+                        style={{
+                          width: "100%",
+                          padding: "11px",
+                          borderRadius: "12px",
+                          fontSize: "13px",
+                          fontWeight: 800,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span>✨</span>
+                        <span>Usar Esta Estrutura no Editor</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
         {/* ABA 3: GALERIA COM MAIS DE 120 TEMPLATES NICHADOS POR PROFISSÃO */}
         {/* ============================================================ */}
         {activeTab === "templates" && (
@@ -4011,19 +4890,19 @@ export default function MagicCarouselsApp() {
           </div>
         )}
 
-        {/* ABA 4: CANVA STUDIO */}
+        {/* ABA 4: CRIAR TEMPLATE DO ZERO COM TODAS FERRAMENTAS POSSÍVEIS */}
         {activeTab === "canva-studio" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
               <div>
                 <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
                   ESTÚDIO DE DESIGN DO ZERO
                 </span>
                 <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
-                  Canva Studio: Crie seu Próprio Template
+                  Criar Template do Zero com Todas Ferramentas
                 </h2>
                 <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                  Defina suas cores de marca, fontes e elementos geométricos para ter carrosséis com a sua cara.
+                  Personalize cada pixel: gradientes, texturas blueprint/grain, tipografia editorial, sombras 3D, badges e indicadores.
                 </p>
               </div>
 
@@ -4031,78 +4910,126 @@ export default function MagicCarouselsApp() {
                 type="button"
                 onClick={handleSaveCustomTemplate}
                 className="btn-primary-ig"
-                style={{ padding: "12px 28px", fontSize: "14px" }}
+                style={{ padding: "12px 28px", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}
               >
-                💾 Salvar & Usar no Meu Carrossel
+                <span>💾</span>
+                <span>Salvar & Usar no Meu Carrossel</span>
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px", alignItems: "start" }}>
+            {/* PRESETS RÁPIDOS DE INSPIRAÇÃO VISUAL */}
+            <div style={{ background: "rgba(18, 18, 24, 0.7)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: "16px 20px" }}>
+              <span style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
+                ⚡ Presets de Base Recomendados (Clique para carregar e personalizar):
+              </span>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {[
+                  { name: "Warm Paper 📜", bg1: "#fdfbf7", bg2: "#f4efe6", text: "#1c1917", muted: "#78716c", accent: "#ea580c", surface: "#ffffff", heading: "playfair", body: "inter", style: "editorial", pattern: "grain", decoration: "none" },
+                  { name: "Midnight Signal ⚡", bg1: "#09090b", bg2: "#18181b", text: "#ffffff", muted: "#a1a1aa", accent: "#06b6d4", surface: "#18181b", heading: "syne", body: "inter", style: "bold", pattern: "blueprint", decoration: "geometric-vector" },
+                  { name: "Blueprint Tech 📐", bg1: "#0a192f", bg2: "#112240", text: "#e2e8f0", muted: "#94a3b8", accent: "#38bdf8", surface: "#1e293b", heading: "space", body: "inter", style: "vector-business", pattern: "blueprint", decoration: "geometric-vector" },
+                  { name: "Executive Dark 💼", bg1: "#000000", bg2: "#141416", text: "#ffffff", muted: "#94a3b8", accent: "#e11d48", surface: "#1c1c20", heading: "montserrat", body: "inter", style: "clean", pattern: "dots", decoration: "minimal-line" },
+                  { name: "Neon Sunset 🔥", bg1: "#1a0826", bg2: "#2e0854", text: "#ffffff", muted: "#cbd5e1", accent: "#f43f5e", surface: "#26113b", heading: "syne", body: "poppins", style: "gradient", pattern: "geometric", decoration: "geometric-vector" },
+                  { name: "Chalkboard / Lousa ✏️", bg1: "#16241a", bg2: "#0f1a12", text: "#f8fafc", muted: "#94a3b8", accent: "#fef08a", surface: "#1b2e21", heading: "bebas", body: "inter", style: "neo-brutal", pattern: "lines", decoration: "none" },
+                ].map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setStudioName(p.name.replace(/[^a-zA-Z0-9 ]/g, "").trim());
+                      setStudioBg1(p.bg1);
+                      setStudioBg2(p.bg2);
+                      setStudioTextColor(p.text);
+                      setStudioMutedColor(p.muted);
+                      setStudioAccentColor(p.accent);
+                      setStudioSurfaceColor(p.surface);
+                      setStudioHeadingFont(p.heading as FontKey);
+                      setStudioBodyFont(p.body as FontKey);
+                      setStudioStyle(p.style as TemplateStyle);
+                      setStudioPattern(p.pattern as typeof studioPattern);
+                      setStudioDecoration(p.decoration as Decoration);
+                    }}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#ffffff",
+                      padding: "8px 14px",
+                      borderRadius: "9999px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "32px", alignItems: "start" }}>
+              {/* PAINEL ESQUERDO: CONTROLES COMPLETOS DE CUSTOMIZAÇÃO */}
               <div
                 style={{
-                  background: "rgba(18, 18, 24, 0.8)",
+                  background: "rgba(18, 18, 24, 0.85)",
                   border: "1px solid rgba(255, 255, 255, 0.08)",
                   borderRadius: "24px",
                   padding: "24px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "18px",
+                  gap: "22px",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
                 }}
               >
+                {/* 1. NOME DO TEMPLATE */}
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                    Nome do seu Template
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#ffffff", marginBottom: "6px" }}>
+                    🏷️ Nome do seu Template
                   </label>
                   <input
                     type="text"
                     className="studio-input"
                     value={studioName}
                     onChange={(e) => setStudioName(e.target.value)}
+                    placeholder="Ex: Minimalist Dark Pro"
                   />
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                      Fonte do Título
-                    </label>
-                    <select
-                      className="studio-input"
-                      value={studioHeadingFont}
-                      onChange={(e) => setStudioHeadingFont(e.target.value as FontKey)}
-                    >
-                      <option value="montserrat">Montserrat (Impactante)</option>
-                      <option value="syne">Syne (Ultra Moderno)</option>
-                      <option value="playfair">Playfair (Luxo & Elegante)</option>
-                      <option value="poppins">Poppins (Clean & Geek)</option>
-                      <option value="bebas">Bebas Neue (Caixa Alta)</option>
-                      <option value="space">Space Grotesk (Tech)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                      Fonte do Corpo
-                    </label>
-                    <select
-                      className="studio-input"
-                      value={studioBodyFont}
-                      onChange={(e) => setStudioBodyFont(e.target.value as FontKey)}
-                    >
-                      <option value="inter">Inter (Legibilidade Alta)</option>
-                      <option value="poppins">Poppins</option>
-                      <option value="montserrat">Montserrat</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                    Cores de Fundo (Gradiente ou Sólido)
+                {/* 2. PLANO DE FUNDO & GRADIENTES */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
+                    🎨 Plano de Fundo & Textura
                   </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+
+                  <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
+                    {[
+                      { id: "gradient", label: "Gradiente Linear" },
+                      { id: "radial", label: "Gradiente Radial" },
+                      { id: "solid", label: "Cor Sólida" },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setStudioBgType(m.id as typeof studioBgType)}
+                        style={{
+                          flex: 1,
+                          padding: "6px",
+                          borderRadius: "8px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          border: "none",
+                          background: studioBgType === m.id ? "var(--ig-sunset)" : "rgba(255,255,255,0.05)",
+                          color: "#ffffff",
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: studioBgType === "solid" ? "1fr" : "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
                     <div>
-                      <span style={{ fontSize: "11px", color: "#94a3b8" }}>Cor Primária</span>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Cor Primária</span>
                       <input
                         type="color"
                         value={studioBg1}
@@ -4110,105 +5037,544 @@ export default function MagicCarouselsApp() {
                         style={{ width: "100%", height: "36px", border: "none", borderRadius: "8px", cursor: "pointer", background: "none" }}
                       />
                     </div>
-                    <div>
-                      <span style={{ fontSize: "11px", color: "#94a3b8" }}>Cor Secundária</span>
+                    {studioBgType !== "solid" && (
+                      <div>
+                        <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Cor Secundária</span>
+                        <input
+                          type="color"
+                          value={studioBg2}
+                          onChange={(e) => setStudioBg2(e.target.value)}
+                          style={{ width: "100%", height: "36px", border: "none", borderRadius: "8px", cursor: "pointer", background: "none" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {studioBgType === "gradient" && (
+                    <div style={{ marginBottom: "12px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>
+                        <span>Ângulo do Gradiente</span>
+                        <span>{studioGradientAngle}°</span>
+                      </div>
                       <input
-                        type="color"
-                        value={studioBg2}
-                        onChange={(e) => setStudioBg2(e.target.value)}
-                        style={{ width: "100%", height: "36px", border: "none", borderRadius: "8px", cursor: "pointer", background: "none" }}
+                        type="range"
+                        min={0}
+                        max={360}
+                        value={studioGradientAngle}
+                        onChange={(e) => setStudioGradientAngle(Number(e.target.value))}
+                        style={{ width: "100%" }}
                       />
                     </div>
+                  )}
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>
+                      Textura / Padrão de Fundo
+                    </label>
+                    <select
+                      className="studio-input"
+                      value={studioPattern}
+                      onChange={(e) => setStudioPattern(e.target.value as typeof studioPattern)}
+                    >
+                      <option value="none">Nenhuma (Fundo Liso)</option>
+                      <option value="blueprint">Grid Técnico / Blueprint</option>
+                      <option value="grain">Ruído Cinematográfico (Grain)</option>
+                      <option value="dots">Matriz de Pontos</option>
+                      <option value="geometric">Formas Geométricas Modernas</option>
+                      <option value="lines">Linhas Isométricas</option>
+                    </select>
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                    Cores de Leitura & Acentos
+                {/* 3. TIPOGRAFIA & TEXTOS */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
+                    ✍️ Tipografia & Textos
                   </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
                     <div>
-                      <span style={{ fontSize: "11px", color: "#94a3b8" }}>Cor do Texto</span>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Fonte do Título</span>
+                      <select
+                        className="studio-input"
+                        value={studioHeadingFont}
+                        onChange={(e) => setStudioHeadingFont(e.target.value as FontKey)}
+                      >
+                        <option value="montserrat">Montserrat</option>
+                        <option value="syne">Syne (Criativo)</option>
+                        <option value="playfair">Playfair Display (Luxo)</option>
+                        <option value="poppins">Poppins</option>
+                        <option value="bebas">Bebas Neue</option>
+                        <option value="space">Space Grotesk (Tech)</option>
+                        <option value="dmserif">DM Serif (Editorial)</option>
+                        <option value="outfit">Outfit (Clean)</option>
+                        <option value="jakarta">Plus Jakarta</option>
+                        <option value="inter">Inter</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Fonte do Corpo</span>
+                      <select
+                        className="studio-input"
+                        value={studioBodyFont}
+                        onChange={(e) => setStudioBodyFont(e.target.value as FontKey)}
+                      >
+                        <option value="inter">Inter</option>
+                        <option value="poppins">Poppins</option>
+                        <option value="montserrat">Montserrat</option>
+                        <option value="space">Space Grotesk</option>
+                        <option value="outfit">Outfit</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>
+                        <span>Tamanho Título</span>
+                        <span>{studioTitleSize}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={18}
+                        max={34}
+                        value={studioTitleSize}
+                        onChange={(e) => setStudioTitleSize(Number(e.target.value))}
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Espaçamento</span>
+                      <select
+                        className="studio-input"
+                        value={studioLetterSpacing}
+                        onChange={(e) => setStudioLetterSpacing(e.target.value as typeof studioLetterSpacing)}
+                      >
+                        <option value="normal">Normal (0)</option>
+                        <option value="tight">Apertado (-1px)</option>
+                        <option value="wide">Largo (+1.5px)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#cbd5e1", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={studioUppercase}
+                        onChange={(e) => setStudioUppercase(e.target.checked)}
+                        style={{ accentColor: "#e1306c" }}
+                      />
+                      <span>TÍTULOS EM CAIXA ALTA (UPPERCASE)</span>
+                    </label>
+                  </div>
+
+                  {/* CORES DE TEXTO */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#94a3b8" }}>Título</span>
                       <input
                         type="color"
                         value={studioTextColor}
                         onChange={(e) => setStudioTextColor(e.target.value)}
-                        style={{ width: "100%", height: "36px", border: "none", borderRadius: "8px", cursor: "pointer", background: "none" }}
+                        style={{ width: "100%", height: "32px", border: "none", borderRadius: "6px", cursor: "pointer", background: "none" }}
                       />
                     </div>
                     <div>
-                      <span style={{ fontSize: "11px", color: "#94a3b8" }}>Cor de Destaque</span>
+                      <span style={{ fontSize: "10px", color: "#94a3b8" }}>Subtítulo</span>
+                      <input
+                        type="color"
+                        value={studioMutedColor}
+                        onChange={(e) => setStudioMutedColor(e.target.value)}
+                        style={{ width: "100%", height: "32px", border: "none", borderRadius: "6px", cursor: "pointer", background: "none" }}
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#94a3b8" }}>Destaque</span>
                       <input
                         type="color"
                         value={studioAccentColor}
                         onChange={(e) => setStudioAccentColor(e.target.value)}
-                        style={{ width: "100%", height: "36px", border: "none", borderRadius: "8px", cursor: "pointer", background: "none" }}
+                        style={{ width: "100%", height: "32px", border: "none", borderRadius: "6px", cursor: "pointer", background: "none" }}
                       />
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                    Elementos Vetoriais de Fundo
+                {/* 4. CARTÃO DE CONTEÚDO (SURFACE) & MOLDURA */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
+                    🔲 Estilo do Cartão & Superfície
                   </label>
-                  <select
-                    className="studio-input"
-                    value={studioDecoration}
-                    onChange={(e) => setStudioDecoration(e.target.value as Decoration)}
-                  >
-                    <option value="geometric-vector">Vetor Geométrico (Shutterstock Ads)</option>
-                    <option value="minimal-line">Linha Minimalista</option>
-                    <option value="dot-matrix">Matriz de Pontos</option>
-                    <option value="none">Limpo (Sem formas)</option>
-                  </select>
-                </div>
-              </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <span style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
-                  👁️ Pré-visualização do seu Template em 3 Lâminas:
-                </span>
-
-                <div
-                  style={{
-                    width: "100%",
-                    height: "360px",
-                    background: `linear-gradient(${studioGradientAngle}deg, ${studioBg1} 0%, ${studioBg2} 100%)`,
-                    color: studioTextColor,
-                    borderRadius: "24px",
-                    padding: "28px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    position: "relative",
-                    overflow: "hidden",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "rgba(255,255,255,0.2)" }} />
-                      <span style={{ fontSize: "12px", fontWeight: 700 }}>@{handle}</span>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Cor do Cartão</span>
+                      <input
+                        type="color"
+                        value={studioSurfaceColor}
+                        onChange={(e) => setStudioSurfaceColor(e.target.value)}
+                        style={{ width: "100%", height: "34px", border: "none", borderRadius: "6px", cursor: "pointer", background: "none" }}
+                      />
                     </div>
-                    <span style={{ fontSize: "11px", fontWeight: 800 }}>01/07</span>
+
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>
+                        <span>Opacidade</span>
+                        <span>{studioCardOpacity}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={studioCardOpacity}
+                        onChange={(e) => setStudioCardOpacity(Number(e.target.value))}
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>
+                        <span>Arredondamento</span>
+                        <span>{studioBorderRadius}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={36}
+                        value={studioBorderRadius}
+                        onChange={(e) => setStudioBorderRadius(Number(e.target.value))}
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Sombra 3D</span>
+                      <select
+                        className="studio-input"
+                        value={studioShadow}
+                        onChange={(e) => setStudioShadow(e.target.value as typeof studioShadow)}
+                      >
+                        <option value="none">Nenhuma</option>
+                        <option value="soft">Suave Natural</option>
+                        <option value="deep">Elevação Profunda</option>
+                        <option value="glow">Glow Neon Colorido</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div>
-                    <span style={{ fontSize: "11px", fontWeight: 900, color: studioAccentColor, textTransform: "uppercase", letterSpacing: "1px" }}>
-                      CAPA DO POST
-                    </span>
-                    <h3 style={{ fontSize: "24px", fontWeight: 900, lineHeight: 1.2, marginTop: "6px" }}>
-                      Como Dobrar seu Faturamento Usando Carrosséis
-                    </h3>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", opacity: 0.8 }}>
-                    <span>{studioName}</span>
-                    <span>deslize para o lado →</span>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Estilo da Borda</span>
+                    <select
+                      className="studio-input"
+                      value={studioBorderStyle}
+                      onChange={(e) => setStudioBorderStyle(e.target.value as typeof studioBorderStyle)}
+                    >
+                      <option value="solid">Sólida Fina</option>
+                      <option value="glow">Borda com Glow Neon</option>
+                      <option value="dashed">Tracejada Minimalista</option>
+                      <option value="none">Sem Borda</option>
+                    </select>
                   </div>
                 </div>
+
+                {/* 5. INDICADORES & ELEMENTOS DECORATIVOS */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
+                    🔖 Indicadores & Elementos Visuais
+                  </label>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Numeração de Slides</span>
+                      <select
+                        className="studio-input"
+                        value={studioNumberingStyle}
+                        onChange={(e) => setStudioNumberingStyle(e.target.value as typeof studioNumberingStyle)}
+                      >
+                        <option value="pill">Pill Badge (&quot;01 / 07&quot;)</option>
+                        <option value="bar">Barra de Progresso Linear</option>
+                        <option value="dots">Bolinhas no Rodapé</option>
+                        <option value="minimal">Discreto no Canto</option>
+                        <option value="none">Nenhum</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Indicador de Deslize</span>
+                      <select
+                        className="studio-input"
+                        value={studioSwipeStyle}
+                        onChange={(e) => setStudioSwipeStyle(e.target.value as typeof studioSwipeStyle)}
+                      >
+                        <option value="arrow">Flecha (&quot;deslize →&quot;)</option>
+                        <option value="pill">Pill (&quot;arraste pro lado&quot;)</option>
+                        <option value="hand">Mãozinha 👆</option>
+                        <option value="none">Nenhum</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>Posição da sua Marca (@handle)</span>
+                    <select
+                      className="studio-input"
+                      value={studioBrandPosition}
+                      onChange={(e) => setStudioBrandPosition(e.target.value as typeof studioBrandPosition)}
+                    >
+                      <option value="top-left">Topo à Esquerda</option>
+                      <option value="top-right">Topo à Direita</option>
+                      <option value="bottom-left">Rodapé à Esquerda</option>
+                      <option value="bottom-right">Rodapé à Direita</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* PAINEL DIREITO: LIVE PREVIEW INTERATIVO MULTI-FORMATO & MULTI-LÂMINA */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px", position: "sticky", top: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
+                    👁️ Pré-Visualização em Tempo Real:
+                  </span>
+
+                  {/* SELETOR DE FORMATO */}
+                  <div style={{ display: "flex", gap: "4px", background: "rgba(255,255,255,0.06)", padding: "3px", borderRadius: "10px" }}>
+                    {(["4:5", "3:4", "1:1", "9:16"] as CarouselFormat[]).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setStudioPreviewFormat(f)}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          border: "none",
+                          fontSize: "11px",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          background: studioPreviewFormat === f ? "var(--ig-sunset)" : "transparent",
+                          color: "#ffffff",
+                        }}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* SELETOR DE LÂMINA DO PREVIEW */}
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {[
+                    { idx: 0, label: "Lâmina 1 (Capa)" },
+                    { idx: 1, label: "Lâmina 2 (Conteúdo)" },
+                    { idx: 2, label: "Lâmina 3 (CTA Final)" },
+                  ].map((s) => (
+                    <button
+                      key={s.idx}
+                      type="button"
+                      onClick={() => setStudioPreviewSlide(s.idx as 0 | 1 | 2)}
+                      style={{
+                        flex: 1,
+                        padding: "7px",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        fontSize: "11.5px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        background: studioPreviewSlide === s.idx ? "rgba(255,255,255,0.14)" : "rgba(18,18,24,0.6)",
+                        color: studioPreviewSlide === s.idx ? "#ffffff" : "#94a3b8",
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* MOCKUP DO SLIDE RENDERIZADO COM TODOS OS EFEITOS */}
+                {(() => {
+                  const bgStyle = studioBgType === "solid"
+                    ? studioBg1
+                    : studioBgType === "radial"
+                    ? `radial-gradient(circle at center, ${studioBg2} 0%, ${studioBg1} 100%)`
+                    : `linear-gradient(${studioGradientAngle}deg, ${studioBg1} 0%, ${studioBg2} 100%)`;
+
+                  const patternOverlay = studioPattern === "blueprint"
+                    ? "radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px)"
+                    : studioPattern === "dots"
+                    ? "radial-gradient(rgba(255,255,255,0.15) 1.5px, transparent 1.5px)"
+                    : studioPattern === "lines"
+                    ? "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px)"
+                    : "none";
+
+                  const patternSize = studioPattern === "blueprint" ? "18px 18px" : studioPattern === "dots" ? "14px 14px" : "auto";
+
+                  const shadowStyle = studioShadow === "deep"
+                    ? "0 25px 50px -12px rgba(0,0,0,0.85)"
+                    : studioShadow === "glow"
+                    ? `0 0 40px ${studioAccentColor}44, 0 20px 40px rgba(0,0,0,0.6)`
+                    : studioShadow === "soft"
+                    ? "0 10px 25px rgba(0,0,0,0.4)"
+                    : "none";
+
+                  const heightByFormat = studioPreviewFormat === "1:1" ? "380px" : studioPreviewFormat === "9:16" ? "560px" : studioPreviewFormat === "3:4" ? "480px" : "450px";
+
+                  return (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: heightByFormat,
+                        background: bgStyle,
+                        backgroundImage: patternOverlay !== "none" ? `${patternOverlay}, ${bgStyle}` : bgStyle,
+                        backgroundSize: patternSize,
+                        color: studioTextColor,
+                        borderRadius: "28px",
+                        padding: "24px",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        position: "relative",
+                        overflow: "hidden",
+                        border: studioBorderStyle === "glow"
+                          ? `1.5px solid ${studioAccentColor}`
+                          : studioBorderStyle === "dashed"
+                          ? "1.5px dashed rgba(255,255,255,0.2)"
+                          : studioBorderStyle === "solid"
+                          ? "1px solid rgba(255,255,255,0.12)"
+                          : "none",
+                        boxShadow: shadowStyle,
+                        transition: "all 0.3s ease",
+                      }}
+                    >
+                      {/* BARRA DE PROGRESSO SE ATIVA */}
+                      {studioNumberingStyle === "bar" && (
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: "rgba(255,255,255,0.1)" }}>
+                          <div style={{ width: studioPreviewSlide === 0 ? "33%" : studioPreviewSlide === 1 ? "66%" : "100%", height: "100%", background: studioAccentColor, transition: "width 0.3s ease" }} />
+                        </div>
+                      )}
+
+                      {/* CABEÇALHO DO SLIDE: BRAND & NÚMERO */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          {avatarImage ? (
+                            <img src={avatarImage} alt="Avatar" style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 800 }}>
+                              {handle.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span style={{ fontSize: "12px", fontWeight: 700, fontFamily: FONTS[studioBodyFont]?.css }}>@{handle}</span>
+                        </div>
+
+                        {studioNumberingStyle === "pill" && (
+                          <span style={{ fontSize: "11px", fontWeight: 800, background: "rgba(0,0,0,0.4)", color: "#ffffff", padding: "3px 9px", borderRadius: "9999px" }}>
+                            0{studioPreviewSlide + 1} / 07
+                          </span>
+                        )}
+                        {studioNumberingStyle === "minimal" && (
+                          <span style={{ fontSize: "11px", fontWeight: 700, opacity: 0.8 }}>
+                            {studioPreviewSlide + 1}/7
+                          </span>
+                        )}
+                      </div>
+
+                      {/* CONTEÚDO DENTRO DO CARD COM SURFACE STYLING */}
+                      <div
+                        style={{
+                          background: `${studioSurfaceColor}${Math.round((studioCardOpacity / 100) * 255).toString(16).padStart(2, "0")}`,
+                          borderRadius: `${studioBorderRadius}px`,
+                          padding: "20px",
+                          border: `1px solid rgba(255,255,255,0.1)`,
+                          zIndex: 2,
+                          textAlign: studioTextAlign,
+                          letterSpacing: studioLetterSpacing === "tight" ? "-1px" : studioLetterSpacing === "wide" ? "1.5px" : "normal",
+                        }}
+                      >
+                        {studioPreviewSlide === 0 && (
+                          <>
+                            <span style={{ fontSize: "10.5px", fontWeight: 900, color: studioAccentColor, textTransform: "uppercase", letterSpacing: "1.5px", display: "block", marginBottom: "6px", fontFamily: FONTS[studioHeadingFont]?.css }}>
+                              PASSO A PASSO DEFINITIVO
+                            </span>
+                            <h3 style={{ fontSize: `${studioTitleSize}px`, fontWeight: 900, lineHeight: 1.25, textTransform: studioUppercase ? "uppercase" : "none", fontFamily: FONTS[studioHeadingFont]?.css, marginBottom: "8px" }}>
+                              Como Dobrar seu Faturamento Usando Carrosséis
+                            </h3>
+                            <p style={{ fontSize: "13px", color: studioMutedColor, lineHeight: 1.5, fontFamily: FONTS[studioBodyFont]?.css }}>
+                              O método validado para atrair clientes prontos para comprar sem gastar fortunas em anúncios.
+                            </p>
+                          </>
+                        )}
+
+                        {studioPreviewSlide === 1 && (
+                          <>
+                            <span style={{ fontSize: "10.5px", fontWeight: 900, color: studioAccentColor, textTransform: "uppercase", letterSpacing: "1.5px", display: "block", marginBottom: "6px", fontFamily: FONTS[studioHeadingFont]?.css }}>
+                              ESTRATÉGIA #01
+                            </span>
+                            <h3 style={{ fontSize: `${studioTitleSize - 2}px`, fontWeight: 900, lineHeight: 1.25, textTransform: studioUppercase ? "uppercase" : "none", fontFamily: FONTS[studioHeadingFont]?.css, marginBottom: "10px" }}>
+                              Os 3 Elementos de um Carrossel que Vende
+                            </h3>
+                            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "6px", textAlign: "left", fontSize: "12px", fontFamily: FONTS[studioBodyFont]?.css }}>
+                              <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ color: studioAccentColor, fontWeight: 900 }}>✓</span> Gancho magnético nos primeiros 1.2 segundos
+                              </li>
+                              <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ color: studioAccentColor, fontWeight: 900 }}>✓</span> Estrutura respirável sem blocos gigantes de texto
+                              </li>
+                              <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ color: studioAccentColor, fontWeight: 900 }}>✓</span> Chamada única e direta no último slide
+                              </li>
+                            </ul>
+                          </>
+                        )}
+
+                        {studioPreviewSlide === 2 && (
+                          <>
+                            <span style={{ fontSize: "10.5px", fontWeight: 900, color: studioAccentColor, textTransform: "uppercase", letterSpacing: "1.5px", display: "block", marginBottom: "6px", fontFamily: FONTS[studioHeadingFont]?.css }}>
+                              NÃO PERCA ESSE GUIA
+                            </span>
+                            <h3 style={{ fontSize: `${studioTitleSize - 2}px`, fontWeight: 900, lineHeight: 1.25, textTransform: studioUppercase ? "uppercase" : "none", fontFamily: FONTS[studioHeadingFont]?.css, marginBottom: "8px" }}>
+                              Gostou deste conteúdo prático?
+                            </h3>
+                            <p style={{ fontSize: "13px", color: studioMutedColor, lineHeight: 1.5, fontFamily: FONTS[studioBodyFont]?.css, marginBottom: "12px" }}>
+                              Salve este post na bandeirinha para consultar quando for criar seu próximo post!
+                            </p>
+                            <div style={{ display: "inline-block", background: studioAccentColor, color: "#ffffff", padding: "8px 18px", borderRadius: "9999px", fontSize: "12px", fontWeight: 800 }}>
+                              Salvar na Bandeirinha 📌
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* RODAPÉ DO SLIDE: BOLINHAS & SWIPE */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", opacity: 0.85, zIndex: 2 }}>
+                        <span>{studioName}</span>
+
+                        {studioNumberingStyle === "dots" && (
+                          <div style={{ display: "flex", gap: "4px" }}>
+                            {[0, 1, 2].map((di) => (
+                              <div key={di} style={{ width: studioPreviewSlide === di ? "12px" : "5px", height: "5px", borderRadius: "3px", background: studioPreviewSlide === di ? studioAccentColor : "rgba(255,255,255,0.3)" }} />
+                            ))}
+                          </div>
+                        )}
+
+                        {studioSwipeStyle === "arrow" && <span>deslize para o lado →</span>}
+                        {studioSwipeStyle === "pill" && <span style={{ background: "rgba(0,0,0,0.3)", padding: "2px 8px", borderRadius: "9999px" }}>arraste pro lado 👉</span>}
+                        {studioSwipeStyle === "hand" && <span>👆 passe para o lado</span>}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <button
+                  type="button"
+                  onClick={handleSaveCustomTemplate}
+                  className="btn-primary-ig"
+                  style={{ width: "100%", padding: "14px", fontSize: "14.5px", borderRadius: "14px", fontWeight: 800 }}
+                >
+                  💾 Salvar Este Template & Começar a Criar
+                </button>
               </div>
             </div>
           </div>
@@ -4262,23 +5628,32 @@ export default function MagicCarouselsApp() {
       <div className="mobile-bottom-bar mobile-only">
         <button
           type="button"
-          onClick={() => setActiveTab("landing")}
-          className={`mobile-tab-btn ${activeTab === "landing" ? "active" : ""}`}
-        >
-          <span style={{ fontSize: "18px" }}>🚀</span>
-          <span>Vendas</span>
-        </button>
-
-        <button
-          type="button"
           onClick={() => {
             if (!user) setIsAuthModalOpen(true);
             else setActiveTab("creator");
           }}
           className={`mobile-tab-btn ${activeTab === "creator" ? "active" : ""}`}
         >
-          <span style={{ fontSize: "18px" }}>🎨</span>
-          <span>Criador</span>
+          <span style={{ fontSize: "17px" }}>🎨</span>
+          <span>Criar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("projects")}
+          className={`mobile-tab-btn ${activeTab === "projects" ? "active" : ""}`}
+        >
+          <span style={{ fontSize: "17px" }}>📁</span>
+          <span>Projetos</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("inspiration")}
+          className={`mobile-tab-btn ${activeTab === "inspiration" ? "active" : ""}`}
+        >
+          <span style={{ fontSize: "17px" }}>💡</span>
+          <span>Inspiração</span>
         </button>
 
         <button
@@ -4286,30 +5661,17 @@ export default function MagicCarouselsApp() {
           onClick={() => setActiveTab("templates")}
           className={`mobile-tab-btn ${activeTab === "templates" ? "active" : ""}`}
         >
-          <span style={{ fontSize: "18px" }}>📂</span>
-          <span>120+ Modelos</span>
+          <span style={{ fontSize: "17px" }}>📂</span>
+          <span>Modelos</span>
         </button>
 
         <button
           type="button"
-          onClick={() => {
-            if (!user) setIsAuthModalOpen(true);
-            else setIsProfileModalOpen(true);
-          }}
-          className="mobile-tab-btn"
+          onClick={() => setActiveTab("canva-studio")}
+          className={`mobile-tab-btn ${activeTab === "canva-studio" ? "active" : ""}`}
         >
-          <span style={{ fontSize: "18px" }}>👤</span>
-          <span>Perfil</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("checkout")}
-          className={`mobile-tab-btn ${activeTab === "checkout" ? "active" : ""}`}
-          style={{ color: "#f472b6" }}
-        >
-          <span style={{ fontSize: "18px" }}>💎</span>
-          <span>{scarcityTier.priceFormatted}</span>
+          <span style={{ fontSize: "17px" }}>🛠️</span>
+          <span>Do Zero</span>
         </button>
       </div>
 

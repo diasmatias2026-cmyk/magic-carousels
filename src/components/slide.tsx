@@ -24,7 +24,7 @@ export function SlideView({
   const accent = String(a.accent || t.colors.accent);
   const style: CSSProperties = {
     width: 360,
-    height: format === "1:1" ? 360 : format === "9:16" ? 640 : 450,
+    height: format === "1:1" ? 360 : format === "9:16" ? 640 : format === "3:4" ? 480 : 450,
     background: a.bgColor
       ? bg
       : t.style === "gradient"

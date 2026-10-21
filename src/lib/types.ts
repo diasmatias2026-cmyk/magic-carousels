@@ -1,6 +1,6 @@
 export type SlideType = "cover" | "content" | "list" | "stat" | "quote" | "cta";
 export type ImageMode = "none" | "top" | "background";
-export type CarouselFormat = "4:5" | "1:1" | "9:16";
+export type CarouselFormat = "4:5" | "3:4" | "1:1" | "9:16";
 
 export interface Slide {
   id: string;
@@ -41,9 +41,10 @@ export const FORMAT_SIZES: Record<
   CarouselFormat,
   { w: number; h: number; label: string }
 > = {
-  "4:5": { w: 1080, h: 1350, label: "Retrato 4:5 (Instagram)" },
-  "1:1": { w: 1080, h: 1080, label: "Quadrado 1:1" },
-  "9:16": { w: 1080, h: 1920, label: "Stories 9:16" },
+  "4:5": { w: 1080, h: 1350, label: "Retrato 4:5 (Instagram Feed)" },
+  "3:4": { w: 1080, h: 1440, label: "Alto 3:4 (Máx. Engajamento)" },
+  "1:1": { w: 1080, h: 1080, label: "Quadrado 1:1 (Universal)" },
+  "9:16": { w: 1080, h: 1920, label: "Stories / Reels 9:16" },
 };
 
 export const DEFAULT_BRAND: BrandData = {
