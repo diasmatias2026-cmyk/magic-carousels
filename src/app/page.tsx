@@ -1812,11 +1812,13 @@ export default function MagicCarouselsApp() {
             style={{
               background: "#121218",
               border: "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: "28px",
-              padding: "36px 30px",
-              maxWidth: "440px",
+              borderRadius: "20px",
+              padding: "24px 22px 18px",
+              maxWidth: "390px",
               width: "100%",
-              boxShadow: "0 25px 60px rgba(0,0,0,0.9)",
+              maxHeight: "calc(100vh - 32px)",
+              overflowY: "auto",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.85)",
               position: "relative",
             }}
           >
@@ -1825,29 +1827,32 @@ export default function MagicCarouselsApp() {
               onClick={() => setIsAuthModalOpen(false)}
               style={{
                 position: "absolute",
-                top: "18px",
-                right: "18px",
+                top: "14px",
+                right: "14px",
                 background: "rgba(255,255,255,0.06)",
                 border: "none",
                 color: "#94a3b8",
-                width: "32px",
-                height: "32px",
+                width: "28px",
+                height: "28px",
                 borderRadius: "50%",
                 cursor: "pointer",
-                fontSize: "14px",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               ✕
             </button>
 
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <div style={{ width: "48px", height: "48px", borderRadius: "16px", background: "var(--ig-sunset)", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
+            <div style={{ textAlign: "center", marginBottom: "12px" }}>
+              <div style={{ width: "38px", height: "38px", borderRadius: "12px", background: "var(--ig-sunset)", margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>
                 ✨
               </div>
-              <h3 style={{ fontSize: "22px", fontWeight: 900, color: "#ffffff" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px" }}>
                 {authModalMode === "login" ? "Acesse sua Conta" : "Crie sua Conta no Magic Carousels"}
               </h3>
-              <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px" }}>
+              <p style={{ color: "#94a3b8", fontSize: "12px", marginTop: "2px" }}>
                 {authModalMode === "login"
                   ? "Entre para acessar seus carrosséis salvos e estúdio."
                   : "Cadastre-se para liberar seu teste gratuito de 1 carrossel."}
@@ -1858,11 +1863,11 @@ export default function MagicCarouselsApp() {
             <div
               style={{
                 display: "flex",
-                gap: "6px",
-                background: "rgba(255,255,255,0.06)",
-                padding: "4px",
-                borderRadius: "14px",
-                marginBottom: "20px",
+                gap: "4px",
+                background: "rgba(255,255,255,0.05)",
+                padding: "3px",
+                borderRadius: "12px",
+                marginBottom: "12px",
                 border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
@@ -1874,11 +1879,11 @@ export default function MagicCarouselsApp() {
                 }}
                 style={{
                   flex: 1,
-                  padding: "10px",
-                  borderRadius: "10px",
+                  padding: "8px",
+                  borderRadius: "9px",
                   border: "none",
-                  fontWeight: 800,
-                  fontSize: "13.5px",
+                  fontWeight: 700,
+                  fontSize: "12.5px",
                   cursor: "pointer",
                   background: authModalMode === "login" ? "var(--ig-sunset)" : "transparent",
                   color: "#ffffff",
@@ -1886,7 +1891,7 @@ export default function MagicCarouselsApp() {
                   boxShadow: authModalMode === "login" ? "0 4px 12px rgba(225, 48, 108, 0.3)" : "none",
                 }}
               >
-                🔑 Entrar na Conta
+                🔑 Entrar
               </button>
               <button
                 type="button"
@@ -1896,11 +1901,11 @@ export default function MagicCarouselsApp() {
                 }}
                 style={{
                   flex: 1,
-                  padding: "10px",
-                  borderRadius: "10px",
+                  padding: "8px",
+                  borderRadius: "9px",
                   border: "none",
-                  fontWeight: 800,
-                  fontSize: "13.5px",
+                  fontWeight: 700,
+                  fontSize: "12.5px",
                   cursor: "pointer",
                   background: authModalMode === "register" ? "var(--ig-sunset)" : "transparent",
                   color: "#ffffff",
@@ -1908,117 +1913,118 @@ export default function MagicCarouselsApp() {
                   boxShadow: authModalMode === "register" ? "0 4px 12px rgba(225, 48, 108, 0.3)" : "none",
                 }}
               >
-                ✨ Criar Nova Conta
+                ✨ Criar Conta
               </button>
             </div>
 
-            {/* BOTÕES SOCIAIS DINÂMICOS */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
-              {/* Botão Oficial Google Identity Services */}
-              <div
-                ref={googleBtnContainerRef}
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                }}
-              />
+            {/* BOTÕES SOCIAIS COMPACTOS EM LINHA (ECONOMIZA ESPAÇO VERTICAL) */}
+            <div
+              ref={googleBtnContainerRef}
+              style={{ display: "none" }}
+            />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "10px" }}>
               <button
                 type="button"
                 onClick={() => handleSocialLogin("google")}
                 disabled={authPending}
+                title="Google"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "10px",
+                  gap: "6px",
                   background: "#ffffff",
                   color: "#0f172a",
                   border: "none",
-                  borderRadius: "12px",
-                  padding: "12px",
-                  fontWeight: 800,
-                  fontSize: "13.5px",
+                  borderRadius: "10px",
+                  padding: "9px 8px",
+                  fontWeight: 700,
+                  fontSize: "12px",
                   cursor: "pointer",
+                  transition: "transform 0.15s ease",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24">
+                <svg width="15" height="15" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                {authModalMode === "login" ? "Entrar com Google" : "Cadastrar com Google"}
+                <span>Google</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSocialLogin("apple")}
                 disabled={authPending}
+                title="Apple"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "10px",
+                  gap: "6px",
                   background: "#000000",
                   color: "#ffffff",
                   border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "12px",
-                  padding: "12px",
-                  fontWeight: 800,
-                  fontSize: "13.5px",
+                  borderRadius: "10px",
+                  padding: "9px 8px",
+                  fontWeight: 700,
+                  fontSize: "12px",
                   cursor: "pointer",
+                  transition: "transform 0.15s ease",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.93-2.85-.9.04-1.99.6-2.63 1.35-.57.65-1.06 1.72-.92 2.74 1.01.08 2.01-.5 2.62-1.24z" />
                 </svg>
-                {authModalMode === "login" ? "Entrar com Apple / iCloud" : "Cadastrar com Apple / iCloud"}
+                <span>Apple</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSocialLogin("facebook")}
                 disabled={authPending}
+                title="Facebook"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "10px",
+                  gap: "6px",
                   background: "#1877F2",
                   color: "#ffffff",
                   border: "none",
-                  borderRadius: "12px",
-                  padding: "12px",
-                  fontWeight: 800,
-                  fontSize: "13.5px",
+                  borderRadius: "10px",
+                  padding: "9px 8px",
+                  fontWeight: 700,
+                  fontSize: "12px",
                   cursor: "pointer",
+                  transition: "transform 0.15s ease",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
-                {authModalMode === "login" ? "Entrar com Facebook" : "Cadastrar com Facebook"}
+                <span>Facebook</span>
               </button>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "16px 0" }}>
-              <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.1)" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "10px 0" }}>
+              <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
               <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 700 }}>ou com seu e-mail</span>
-              <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.1)" }} />
+              <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
             </div>
 
-            <form onSubmit={handleEmailAuth} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <form onSubmit={handleEmailAuth} style={{ display: "flex", flexDirection: "column", gap: "9px" }}>
               {authModalMode === "register" && (
                 <div>
-                  <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "3px" }}>
                     Seu Nome Completo
                   </label>
                   <input
                     type="text"
                     required
                     className="studio-input"
+                    style={{ padding: "8px 12px", fontSize: "13px", borderRadius: "10px" }}
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
                     placeholder="Ex: Marco Matias"
@@ -2027,13 +2033,14 @@ export default function MagicCarouselsApp() {
               )}
 
               <div>
-                <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "3px" }}>
                   E-mail
                 </label>
                 <input
                   type="email"
                   required
                   className="studio-input"
+                  style={{ padding: "8px 12px", fontSize: "13px", borderRadius: "10px" }}
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   placeholder="seu@email.com"
@@ -2041,13 +2048,14 @@ export default function MagicCarouselsApp() {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "3px" }}>
                   Senha
                 </label>
                 <input
                   type="password"
                   required
                   className="studio-input"
+                  style={{ padding: "8px 12px", fontSize: "13px", borderRadius: "10px" }}
                   minLength={authModalMode === "register" ? 6 : undefined}
                   autoComplete={authModalMode === "register" ? "new-password" : "current-password"}
                   value={authPassword}
@@ -2056,9 +2064,23 @@ export default function MagicCarouselsApp() {
                 />
               </div>
 
-              {authModalMode === "register" && <label style={{display:"flex",gap:8,fontSize:12,alignItems:"flex-start"}}><input type="checkbox" required checked={acceptTerms} onChange={e => setAcceptTerms(e.target.checked)} /> <span>Li e aceito os <Link href="/termos" target="_blank">Termos de Uso</Link> e a <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.</span></label>}
+              {authModalMode === "register" && (
+                <label style={{ display: "flex", gap: "6px", fontSize: "11px", alignItems: "center", color: "#94a3b8", marginTop: "1px" }}>
+                  <input
+                    type="checkbox"
+                    required
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    style={{ accentColor: "#e1306c", cursor: "pointer" }}
+                  />
+                  <span>
+                    Li e aceito os <Link href="/termos" target="_blank" style={{ color: "#f472b6" }}>Termos</Link> e <Link href="/privacidade" target="_blank" style={{ color: "#f472b6" }}>Privacidade</Link>.
+                  </span>
+                </label>
+              )}
+
               {authError && (
-                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "10px", borderRadius: "10px", color: "#f87171", fontSize: "12px", fontWeight: 700 }}>
+                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "8px 10px", borderRadius: "8px", color: "#f87171", fontSize: "11.5px", fontWeight: 700 }}>
                   ⚠️ {authError}
                 </div>
               )}
@@ -2067,23 +2089,23 @@ export default function MagicCarouselsApp() {
                 type="submit"
                 disabled={authPending}
                 className="btn-primary-ig"
-                style={{ width: "100%", padding: "13px", borderRadius: "12px", marginTop: "8px", fontSize: "14px", fontWeight: 800 }}
+                style={{ width: "100%", padding: "10px", borderRadius: "10px", marginTop: "4px", fontSize: "13px", fontWeight: 800 }}
               >
                 {authPending ? "Processando..." : authModalMode === "login" ? "Entrar na Minha Conta 🔑" : "Criar Conta e Liberar Teste Grátis ✨"}
               </button>
             </form>
 
-            <div style={{ textAlign: "center", marginTop: "16px" }}>
+            <div style={{ textAlign: "center", marginTop: "12px" }}>
               <button
                 type="button"
                 onClick={() => {
                   setAuthError("");
                   setAuthModalMode(authModalMode === "login" ? "register" : "login");
                 }}
-                style={{ background: "none", border: "none", color: "#f472b6", fontSize: "12.5px", fontWeight: 700, cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "#f472b6", fontSize: "11.5px", fontWeight: 700, cursor: "pointer" }}
               >
                 {authModalMode === "login"
-                  ? "Ainda não tem conta? Clique aqui para Criar Nova Conta"
+                  ? "Ainda não tem conta? Clique aqui para Criar"
                   : "Já possui conta cadastrada? Clique aqui para Fazer Login"}
               </button>
             </div>
