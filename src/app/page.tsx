@@ -103,7 +103,7 @@ export default function MagicCarouselsApp() {
   const [selectedNiche, setSelectedNiche] = useState("fitness");
   const [selectedTone, setSelectedTone] = useState("profissional");
   const [slideCount, setSlideCount] = useState(7);
-  const [handle, setHandle] = useState("marcodmatias");
+  const [handle, setHandle] = useState("magiccarousels");
 
   // Template ativo no carrossel
   const [currentTemplateId, setCurrentTemplateId] = useState<string>("fit-beast-neon");
@@ -118,7 +118,7 @@ export default function MagicCarouselsApp() {
   });
 
   // Edição visual do Carrossel (Maior poder de edição)
-  const [avatarImage, setAvatarImage] = useState<string | null>(null);
+  const [avatarImage, setAvatarImage] = useState<string | null>("/favicon.png");
   const [titleFontSize, setTitleFontSize] = useState<number>(22);
   const [textAlign, setTextAlign] = useState<"left" | "center">("left");
   const [isUppercase, setIsUppercase] = useState<boolean>(false);
