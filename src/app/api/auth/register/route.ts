@@ -10,11 +10,11 @@ import {
 export const POST = async (req: Request) => {
   let token: string | undefined;
   const result = await endpoint(async (req) => {
-    await limit(req, "register", 5, 3600);
+    await limit(req, "register", 30, 900);
     const b = await body(req);
     const name = text(b.name, 2, 100, "Nome");
     const email = text(b.email, 3, 254, "E-mail").toLowerCase();
-    const pass = validatePassword(b.password);
+    const pass = validatePassword(b.password, 6);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw new HttpError(400, "E-mail inválido.");
     if (b.acceptTerms !== true)
@@ -29,12 +29,35 @@ export const POST = async (req: Request) => {
       })
       .select("id")
       .single();
-    if (r.error?.code === "23505")
+    if (
+      r.error?.code === "23505" ||
+      r.error?.message?.toLowerCase().includes("unique") ||
+      r.error?.message?.toLowerCase().includes("duplicate")
+    ) {
       throw new HttpError(
         409,
-        "Não foi possível cadastrar. Se já possui conta, entre.",
+        "Este e-mail já está cadastrado. Clique em 'Fazer Login' para entrar.",
       );
-    check(r.error);
+    }
+    if (r.error) {
+      console.error("Erro no cadastro:", r.error);
+      throw new HttpError(400, r.error.message || "Não foi possível cadastrar. Tente novamente.");
+    }
+
+    // Inicializar BrandKit padrão do usuário
+    const handle = email
+      .split("@")[0]
+      .replace(/[^a-z0-9_.]/g, "")
+      .slice(0, 24);
+    try {
+      await database().from("brand_kits").upsert({
+        user_id: r.data!.id,
+        data: { displayName: name, handle: handle || "meuperfil", avatarUrl: null },
+      });
+    } catch {
+      // ignora falha não-crítica de brand kit
+    }
+
     token = await signSession(r.data!.id);
     return { ok: true };
   })(req);

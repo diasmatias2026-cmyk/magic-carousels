@@ -56,7 +56,7 @@ export default function MagicCarouselsApp() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
-  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(true);
   const [carouselId, setCarouselId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -1937,7 +1937,7 @@ export default function MagicCarouselsApp() {
                   type="password"
                   required
                   className="studio-input"
-                  minLength={authModalMode === "register" ? 12 : undefined}
+                  minLength={authModalMode === "register" ? 6 : undefined}
                   autoComplete={authModalMode === "register" ? "new-password" : "current-password"}
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}

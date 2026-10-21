@@ -1,5 +1,5 @@
 import { HttpError } from "./http";
-export function password(value: unknown, min = 12) {
+export function password(value: unknown, min = 6) {
   if (
     typeof value !== "string" ||
     value.length < min ||
