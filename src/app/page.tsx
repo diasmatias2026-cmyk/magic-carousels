@@ -2977,7 +2977,7 @@ export default function MagicCarouselsApp() {
                         >
                           {NICHES.map((n) => (
                             <option key={n.id} value={n.id} style={{ background: "#181824", color: "#ffffff" }}>
-                              {n.icon} {n.name}
+                              {n.emoji} {n.name}
                             </option>
                           ))}
                         </select>

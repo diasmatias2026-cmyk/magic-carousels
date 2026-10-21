@@ -1409,3 +1409,8 @@ export function templatesForCategory(category: string) {
 export function defaultTemplateForNiche(niche: string) {
   return TEMPLATES.find((t) => t.niche === niche)?.id ?? "mkt-sunset-viral";
 }
+
+export const FREE_TEMPLATE_IDS = new Set(
+  TEMPLATES.filter((t) => !t.premium).map((t) => t.id).concat(["mkt-sunset-viral", "mkt-dark-saas", "med-clinical-trust"])
+);
+
