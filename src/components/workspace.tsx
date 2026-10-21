@@ -45,6 +45,24 @@ type Order = {
   status: string;
   created_at: string;
 };
+type PopupLead = {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string;
+  source: string;
+  whatsapp_clicks: number;
+  last_clicked_at: string | null;
+  created_at: string;
+};
+
+type BehaviorStats = {
+  sectionViews: Record<string, number>;
+  dropOffPoints: Record<string, number>;
+  ctaClicks: Record<string, number>;
+  totalEvents: number;
+};
+
 type Admin = {
   totalUsers: number;
   paidRevenue: number;
@@ -52,7 +70,35 @@ type Admin = {
   users: (User & { created_at: string })[];
   payments: Order[];
   sessions: { user_id: string; last_seen_at: string; current_page: string }[];
+  leads?: PopupLead[];
+  totalLeads?: number;
+  totalWhatsappClicks?: number;
+  behavior?: BehaviorStats;
 };
+
+function exportLeadsCsv(leads: PopupLead[]) {
+  if (!leads || !leads.length) {
+    alert("Nenhum cadastro de lead para exportar.");
+    return;
+  }
+  const headers = ["Nome", "E-mail", "WhatsApp", "Origem", "Cliques no WhatsApp", "Data de Cadastro"];
+  const rows = leads.map((l) => [
+    `"${(l.name || "Não informado").replace(/"/g, '""')}"`,
+    `"${l.email.replace(/"/g, '""')}"`,
+    `"${(l.phone || "").replace(/"/g, '""')}"`,
+    `"${(l.source || "").replace(/"/g, '""')}"`,
+    l.whatsapp_clicks || 0,
+    `"${new Date(l.created_at).toLocaleString("pt-BR")}"`,
+  ]);
+  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `leads_popup_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 async function api(path: string, method = "GET", data?: unknown) {
   const r = await fetch("/api/" + path, {
     method,
@@ -1362,10 +1408,18 @@ export default function Workspace() {
               <p>Carregando painel…</p>
             ) : (
               <>
-                <div className="metrics">
+                <div className="metrics" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginBottom: "20px" }}>
                   <div>
-                    <span>Cadastros</span>
+                    <span>Cadastros App</span>
                     <strong>{admin.totalUsers}</strong>
+                  </div>
+                  <div style={{ borderLeft: "3px solid #25D366" }}>
+                    <span>Leads Popup (WhatsApp)</span>
+                    <strong style={{ color: "#25D366" }}>{admin.totalLeads ?? (admin.leads?.length || 0)}</strong>
+                  </div>
+                  <div style={{ borderLeft: "3px solid #06b6d4" }}>
+                    <span>Cliques no WhatsApp</span>
+                    <strong style={{ color: "#06b6d4" }}>{admin.totalWhatsappClicks ?? 0}</strong>
                   </div>
                   <div>
                     <span>Usuários ativos agora</span>
@@ -1426,7 +1480,150 @@ export default function Workspace() {
                     </tbody>
                   </table>
                 </div>
-                <h2>Últimos 100 pagamentos</h2>
+                {/* PLANILHA DE LEADS DO POPUP DE PRIMEIRO ACESSO */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "32px", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
+                  <div>
+                    <h2 style={{ margin: 0 }}>📋 Cadastros do Popup (WhatsApp VIP)</h2>
+                    <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "#94a3b8" }}>
+                      Visitantes capturados no modal de boas-vindas com contagem de cliques para o WhatsApp.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => exportLeadsCsv(admin.leads || [])}
+                    style={{
+                      background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      fontWeight: 800,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>📥 Baixar Planilha (.CSV)</span>
+                  </button>
+                </div>
+
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>WhatsApp</th>
+                        <th>Cliques no Canal</th>
+                        <th>Cadastro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {admin.leads && admin.leads.length > 0 ? (
+                        admin.leads.map((l) => {
+                          const cleanPhone = l.phone ? l.phone.replace(/\D/g, "") : "";
+                          const waHref = cleanPhone ? `https://wa.me/55${cleanPhone.startsWith("55") ? cleanPhone.slice(2) : cleanPhone}` : null;
+                          return (
+                            <tr key={l.id}>
+                              <td><strong>{l.name || "Visitante"}</strong></td>
+                              <td>{l.email}</td>
+                              <td>
+                                {waHref ? (
+                                  <a
+                                    href={waHref}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: "#25D366", fontWeight: 700, textDecoration: "none" }}
+                                  >
+                                    📲 {l.phone}
+                                  </a>
+                                ) : (
+                                  l.phone || "-"
+                                )}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "2px 8px",
+                                    borderRadius: "9999px",
+                                    fontSize: "11.5px",
+                                    fontWeight: 800,
+                                    background: l.whatsapp_clicks > 0 ? "rgba(37, 211, 102, 0.2)" : "rgba(255,255,255,0.06)",
+                                    color: l.whatsapp_clicks > 0 ? "#86efac" : "#94a3b8",
+                                    border: l.whatsapp_clicks > 0 ? "1px solid rgba(37, 211, 102, 0.4)" : "none",
+                                  }}
+                                >
+                                  {l.whatsapp_clicks} {l.whatsapp_clicks === 1 ? "clique" : "cliques"}
+                                </span>
+                              </td>
+                              <td>{new Date(l.created_at).toLocaleString("pt-BR")}</td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: "center", color: "#94a3b8", padding: "20px" }}>
+                            Nenhum cadastro de lead registrado ainda.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* RASTREAMENTO DE COMPORTAMENTO NA PÁGINA (ONDE AS PESSOAS PARAM) */}
+                <h2 style={{ marginTop: "36px", marginBottom: "8px" }}>📊 Rastreio de Comportamento (Onde as pessoas param)</h2>
+                <p style={{ margin: "0 0 16px", fontSize: "12.5px", color: "#94a3b8" }}>
+                  Acompanhe quais seções da landing page retêm mais visitantes e onde ocorre a maior taxa de parada/abandono.
+                </p>
+
+                {admin.behavior && Object.keys(admin.behavior.sectionViews || {}).length > 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "20px", marginBottom: "24px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      {[
+                        { key: "section-hero", label: "📌 Topo & Apresentação (Hero)" },
+                        { key: "section-preview", label: "📱 Mockup Interativo do Smartphone" },
+                        { key: "section-recursos", label: "⚡ Diferenciais & Recursos" },
+                        { key: "section-precos", label: "💰 Tabela de Preços & Oferta Lote Fundador" },
+                        { key: "section-garantia", label: "🛡️ Garantia Incondicional de 7 Dias" },
+                      ].map((sec) => {
+                        const views = admin.behavior?.sectionViews?.[sec.key] || 0;
+                        const heroViews = admin.behavior?.sectionViews?.["section-hero"] || 1;
+                        const pct = Math.min(100, Math.round((views / heroViews) * 100));
+                        const dropCount = admin.behavior?.dropOffPoints?.[sec.key] || 0;
+
+                        return (
+                          <div key={sec.key}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: 700, marginBottom: "4px" }}>
+                              <span>{sec.label}</span>
+                              <span style={{ color: "#94a3b8" }}>
+                                {views} visualizações {views > 0 ? `(${pct}%)` : ""} {dropCount > 0 ? `• ${dropCount} pararam aqui` : ""}
+                              </span>
+                            </div>
+                            <div style={{ height: "8px", background: "rgba(255,255,255,0.08)", borderRadius: "9999px", overflow: "hidden" }}>
+                              <div
+                                style={{
+                                  height: "100%",
+                                  width: `${pct}%`,
+                                  background: pct > 70 ? "linear-gradient(90deg, #ec4899, #f43f5e)" : pct > 40 ? "linear-gradient(90deg, #f59e0b, #eab308)" : "linear-gradient(90deg, #3b82f6, #06b6d4)",
+                                  borderRadius: "9999px",
+                                  transition: "width 0.4s ease",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color: "#94a3b8", fontSize: "13px", fontStyle: "italic", marginBottom: "20px" }}>
+                    Aguardando primeiros eventos de rolagem dos visitantes na landing page…
+                  </p>
+                )}
                 <div className="table-scroll">
                   <table>
                     <thead>

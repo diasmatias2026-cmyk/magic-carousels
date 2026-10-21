@@ -83,6 +83,7 @@ export default function MagicCarouselsApp() {
   const [leadLoading, setLeadLoading] = useState(false);
   const [leadError, setLeadError] = useState("");
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H");
+  const [registeredLeadId, setRegisteredLeadId] = useState<string | null>(null);
 
   // Cronômetro Regressivo de Escassez (Oferta de Lançamento)
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
@@ -356,6 +357,7 @@ export default function MagicCarouselsApp() {
         body: JSON.stringify({ name: leadName, email: leadEmail, phone: leadPhone, source: "popup_comunidade" }),
       });
       const data = await res.json().catch(() => ({}));
+      if (data.leadId) setRegisteredLeadId(data.leadId);
       if (data.whatsappUrl) {
         setWhatsappGroupUrl(data.whatsappUrl);
       } else {
@@ -372,6 +374,74 @@ export default function MagicCarouselsApp() {
       setLeadLoading(false);
     }
   };
+
+  const handleRecordWhatsappClick = (source: string) => {
+    if (registeredLeadId) {
+      fetch("/api/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: registeredLeadId }),
+      }).catch(() => {});
+    }
+    try {
+      const sessId = typeof window !== "undefined" ? (sessionStorage.getItem("mc_analytics_sess") || "anon") : "anon";
+      fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessId, eventType: "cta_click", section: "whatsapp_channel", details: { source } }),
+      }).catch(() => {});
+    } catch {}
+  };
+
+  // Rastreamento de Comportamento na Página (Onde as pessoas param)
+  useEffect(() => {
+    try {
+      let sessId = sessionStorage.getItem("mc_analytics_sess");
+      if (!sessId) {
+        sessId = "sess_" + Math.random().toString(36).slice(2, 11);
+        sessionStorage.setItem("mc_analytics_sess", sessId);
+      }
+
+      let lastVisible = "section-hero";
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.25) {
+              const id = entry.target.id;
+              if (id) {
+                lastVisible = id;
+                fetch("/api/analytics", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sessionId: sessId, eventType: "section_view", section: id }),
+                }).catch(() => {});
+              }
+            }
+          }
+        },
+        { threshold: 0.25 }
+      );
+
+      const sectionIds = ["section-hero", "section-recursos", "section-preview", "section-garantia"];
+      sectionIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el);
+      });
+
+      const handleBeforeUnload = () => {
+        navigator.sendBeacon?.(
+          "/api/analytics",
+          JSON.stringify({ sessionId: sessId, eventType: "exit_section", section: lastVisible })
+        );
+      };
+
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+      };
+    } catch {}
+  }, []);
 
   // Prompt mágico reativo
   const generatedPrompt = useMemo(() => {
@@ -1655,6 +1725,7 @@ export default function MagicCarouselsApp() {
                   href={whatsappGroupUrl || "https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H"}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => handleRecordWhatsappClick("popup_success")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -2228,7 +2299,7 @@ export default function MagicCarouselsApp() {
         {/* ============================================================ */}
         {activeTab === "landing" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "60px", padding: "20px 0" }}>
-            <section style={{ textAlign: "center", maxWidth: "1080px", margin: "0 auto", padding: "10px" }}>
+            <section id="section-hero" style={{ textAlign: "center", maxWidth: "1080px", margin: "0 auto", padding: "10px" }}>
               <div
                 style={{
                   display: "inline-flex",
@@ -2402,7 +2473,7 @@ export default function MagicCarouselsApp() {
             </section>
 
             {/* SLIDE / MARQUEE DE FOTOS DE PERFIL E EMPRESAS REAIS COMPRANDO */}
-            <section style={{ margin: "0 0 20px 0", overflow: "hidden" }}>
+            <section id="section-recursos" style={{ margin: "0 0 20px 0", overflow: "hidden" }}>
               <div style={{ textAlign: "center", marginBottom: "18px" }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "4px 14px", borderRadius: "9999px", marginBottom: "6px" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
@@ -2490,6 +2561,7 @@ export default function MagicCarouselsApp() {
 
             {/* SHOWCASE DUPLO COM CARROSSEL DESLIZÁVEL IGUAL AO INSTAGRAM */}
             <section
+              id="section-preview"
               style={{
                 background: "linear-gradient(180deg, rgba(18, 18, 24, 0.7) 0%, rgba(10, 10, 14, 0.95) 100%)",
                 border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -2834,6 +2906,7 @@ export default function MagicCarouselsApp() {
 
             {/* SEÇÃO DEDICADA: GARANTIA INCONDICIONAL DE 7 DIAS (RISCO ZERO) */}
             <section
+              id="section-garantia"
               style={{
                 background: "linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(18, 18, 24, 0.95) 50%, rgba(225, 48, 108, 0.08) 100%)",
                 border: "1px solid rgba(34, 197, 94, 0.35)",
@@ -4248,6 +4321,7 @@ export default function MagicCarouselsApp() {
         href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H"
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => handleRecordWhatsappClick("floating_button")}
         style={{
           position: "fixed",
           bottom: "20px",
