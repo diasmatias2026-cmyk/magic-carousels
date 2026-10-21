@@ -1,49 +1,38 @@
-import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { generateCarouselText } from "@/lib/ai";
-import { checkGenerationLimit, isLifetime, logUsage } from "@/lib/limits";
-import { defaultTemplateForNiche, FREE_TEMPLATE_IDS, getTemplate } from "@/templates";
-import type { CarouselFormat } from "@/lib/types";
-
-export async function POST(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
-
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const topic = String(body.topic || "").trim();
-  const niche = String(body.niche || "marketing");
-  const slideCount = Math.max(4, Math.min(10, Number(body.slideCount) || 8));
-  const tone = String(body.tone || "didatico");
-  const audience = String(body.audience || "").slice(0, 160);
-  const format = (["4:5", "1:1", "9:16"].includes(String(body.format)) ? body.format : "4:5") as CarouselFormat;
-  let templateId = String(body.templateId || defaultTemplateForNiche(niche));
-  if (!isLifetime(user.plan) && !FREE_TEMPLATE_IDS.has(templateId)) templateId = defaultTemplateForNiche(niche);
-  templateId = getTemplate(templateId).id;
-
-  if (topic.length < 5) return NextResponse.json({ error: "Descreva o tema com pelo menos 5 caracteres." }, { status: 400 });
-  if (topic.length > 300) return NextResponse.json({ error: "Tema muito longo (máx. 300 caracteres)." }, { status: 400 });
-
-  const limit = await checkGenerationLimit(user.id, user.plan);
-  if (!limit.ok) return NextResponse.json({ error: limit.message, upgrade: !isLifetime(user.plan) }, { status: 402 });
-
-  const result = await generateCarouselText({ topic, niche, slideCount, tone, audience, handle: user.brandKit?.handle });
-
-  const carousel = await db.carousel.create({
-    data: {
-      userId: user.id,
-      title: result.title.slice(0, 140),
-      niche,
-      templateId,
-      prompt: topic,
-      slides: JSON.stringify(result.slides),
-      caption: result.caption,
-      format,
-      useBrand: user.brandKit?.useBrand ?? false,
-    },
+import { requireUser } from "@/lib/auth";
+import { generateCarouselText, activeProvider } from "@/lib/ai";
+import { createCarousel } from "@/lib/carousels";
+import { body, endpoint, HttpError, limit, text } from "@/lib/http";
+import * as validate from "@/lib/validation";
+export const POST = endpoint(async (req) => {
+  const u = await requireUser();
+  await limit(req, "ai", 3, 60, u.id);
+  if (u.plan !== "LIFETIME" && u.freeTrialsUsed >= 1)
+    throw new HttpError(402, "Teste gratuito utilizado.");
+  if (activeProvider() === "mock")
+    throw new HttpError(
+      503,
+      "Geração por IA ainda indisponível. Use o editor ou importe uma resposta com o Prompt.",
+    );
+  const b = await body(req);
+  const topic = text(b.topic, 5, 300, "Tema");
+  const niche = text(b.niche || "marketing", 1, 60, "Nicho");
+  const templateId = validate.template(b.templateId, u.plan);
+  const fmt = validate.format(b.format || "4:5");
+  const count = Number(b.slideCount || 7);
+  if (!Number.isInteger(count) || count < 2 || count > 15)
+    throw new HttpError(400, "Quantidade inválida.");
+  const result = await generateCarouselText({
+    topic,
+    niche,
+    slideCount: count,
+    tone: text(b.tone || "didatico", 1, 40, "Tom"),
   });
-  await logUsage(user.id, "ai_generation");
-  await logUsage(user.id, "carousel_created");
-
-  return NextResponse.json({ id: carousel.id, provider: result.provider });
-}
+  return createCarousel(u.id, {
+    title: result.title.slice(0, 140),
+    niche,
+    template_id: templateId,
+    format: fmt,
+    slides: validate.slides(result.slides),
+    caption: result.caption.slice(0, 4000),
+  });
+});

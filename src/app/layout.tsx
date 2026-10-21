@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
-
+import "./saas.css";
 export const metadata: Metadata = {
-  title: "Magic Carousels — Crie Carrosséis Virais em Segundos",
-  description:
-    "Crie carrosséis de alto engajamento para Instagram e LinkedIn. IA inteligente de texto, templates visuais por nicho, upload manual de avatar, edição de fundo e exportação em alta resolução.",
-  icons: {
-    icon: [
-      { url: "/favicon.png", type: "image/png" },
-      { url: "/icon.png", type: "image/png" },
-    ],
-    shortcut: "/favicon.png",
-    apple: "/app-icon.png",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Magic Carousels — Editor online de carrosséis",
+    template: "%s | Magic Carousels",
   },
+  description:
+    "Crie carrosséis com templates, personalize com sua marca e exporte suas artes. Um espaço online para organizar seu conteúdo.",
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Magic Carousels",
+    title: "Magic Carousels — Suas ideias em carrosséis",
+    description: "Crie, edite e organize conteúdo visual direto no navegador.",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true },
 };
-
 export default function RootLayout({
   children,
 }: {
@@ -22,13 +28,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" type="image/png" href="/favicon.png" />
-        <link rel="shortcut icon" href="/favicon.png" />
-        <link rel="apple-touch-icon" href="/app-icon.png" />
-      </head>
-      <body>{children}</body>
+      <body>
+        <a href="#conteudo" className="skip-link">
+          Pular para o conteúdo
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

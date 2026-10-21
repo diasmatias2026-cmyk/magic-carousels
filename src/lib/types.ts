@@ -37,7 +37,10 @@ export interface BrandData {
   useBrand: boolean;
 }
 
-export const FORMAT_SIZES: Record<CarouselFormat, { w: number; h: number; label: string }> = {
+export const FORMAT_SIZES: Record<
+  CarouselFormat,
+  { w: number; h: number; label: string }
+> = {
   "4:5": { w: 1080, h: 1350, label: "Retrato 4:5 (Instagram)" },
   "1:1": { w: 1080, h: 1080, label: "Quadrado 1:1" },
   "9:16": { w: 1080, h: 1920, label: "Stories 9:16" },
@@ -57,6 +60,8 @@ export const DEFAULT_BRAND: BrandData = {
   useBrand: false,
 };
 
+let uidCounter = 0;
 export function uid(prefix = "s") {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+  uidCounter = (uidCounter + 1) % 1000000;
+  return `${prefix}_${uidCounter}_${((uidCounter * 2654435761) >>> 0).toString(36)}`;
 }

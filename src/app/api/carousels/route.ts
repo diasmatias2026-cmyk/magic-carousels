@@ -1,52 +1,53 @@
-import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { checkGenerationLimit, isLifetime, logUsage } from "@/lib/limits";
-import { buildNicheCarousel } from "@/lib/sample";
-import { defaultTemplateForNiche, FREE_TEMPLATE_IDS, getTemplate } from "@/templates";
-import { uid } from "@/lib/types";
-
-/** Cria um carrossel a partir de um template (sem IA) ou duplica um existente. */
-export async function POST(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  const body = (await req.json().catch(() => ({}))) as Record<string, string>;
-
-  const limit = await checkGenerationLimit(user.id, user.plan);
-  if (!isLifetime(user.plan) && !limit.ok) {
-    return NextResponse.json({ error: limit.message, upgrade: true }, { status: 402 });
-  }
-
-  if (body.duplicateId) {
-    const src = await db.carousel.findFirst({ where: { id: body.duplicateId, userId: user.id } });
-    if (!src) return NextResponse.json({ error: "Não encontrado." }, { status: 404 });
-    const slides = JSON.parse(src.slides).map((s: { id: string }) => ({ ...s, id: uid() }));
-    const copy = await db.carousel.create({
-      data: { ...src, id: undefined, createdAt: undefined, updatedAt: undefined, title: `${src.title} (cópia)`, slides: JSON.stringify(slides) },
+import { requireUser } from "@/lib/auth";
+import { database } from "@/lib/db";
+import {
+  body,
+  check,
+  endpoint,
+  HttpError,
+  limit,
+  text,
+  uuid,
+} from "@/lib/http";
+import { createCarousel } from "@/lib/carousels";
+import * as validate from "@/lib/validation";
+export const GET = endpoint(async () => {
+  const u = await requireUser();
+  const r = await database()
+    .from("carousels")
+    .select("id,title,template_id,format,updated_at")
+    .eq("user_id", u.id)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  check(r.error);
+  return { items: r.data };
+});
+export const POST = endpoint(async (req) => {
+  const u = await requireUser();
+  await limit(req, "create", 20, 60, u.id);
+  const b = await body(req, 4000000);
+  if (b.duplicateId) {
+    const r = await database()
+      .from("carousels")
+      .select("*")
+      .eq("id", uuid(b.duplicateId))
+      .eq("user_id", u.id)
+      .maybeSingle();
+    check(r.error);
+    if (!r.data) throw new HttpError(404, "Projeto não encontrado.");
+    validate.template(r.data.template_id, u.plan);
+    return createCarousel(u.id, {
+      ...r.data,
+      title: (r.data.title + " (cópia)").slice(0, 140),
     });
-    await logUsage(user.id, "carousel_created");
-    return NextResponse.json({ id: copy.id });
   }
-
-  const niche = body.niche || "marketing";
-  let templateId = body.templateId || defaultTemplateForNiche(niche);
-  const tpl = getTemplate(templateId);
-  if (!isLifetime(user.plan) && !FREE_TEMPLATE_IDS.has(tpl.id)) {
-    return NextResponse.json({ error: "Este template é exclusivo do plano Vitalício.", upgrade: true }, { status: 402 });
-  }
-  templateId = tpl.id;
-  const sample = buildNicheCarousel(tpl.niche === "geral" ? niche : tpl.niche, 8);
-  const carousel = await db.carousel.create({
-    data: {
-      userId: user.id,
-      title: sample.title,
-      niche: tpl.niche === "geral" ? niche : tpl.niche,
-      templateId,
-      slides: JSON.stringify(sample.slides),
-      caption: sample.caption,
-      useBrand: user.brandKit?.useBrand ?? false,
-    },
+  return createCarousel(u.id, {
+    title: text(b.title, 1, 140, "Título"),
+    niche: text(b.niche || "marketing", 1, 60, "Nicho"),
+    template_id: validate.template(b.templateId, u.plan),
+    slides: validate.slides(b.slides),
+    caption: text(b.caption || "", 0, 4000, "Legenda"),
+    format: validate.format(b.format || "4:5"),
+    appearance: validate.appearance(b.appearance || {}),
   });
-  await logUsage(user.id, "carousel_created");
-  return NextResponse.json({ id: carousel.id });
-}
+});

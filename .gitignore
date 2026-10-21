@@ -30,14 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
 # sqlite database
 *.db
 *.db-journal
 prisma/*.db
-
 
 # vercel
 .vercel
@@ -45,3 +45,6 @@ prisma/*.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local / private
+.private/

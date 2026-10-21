@@ -4,7 +4,12 @@
  * quanto pelas integrações de API (Gemini, OpenAI, OpenRouter).
  */
 import { getNiche } from "@/data/niches";
-import { uid, type GeneratedCarousel, type Slide, type SlideType } from "@/lib/types";
+import {
+  uid,
+  type GeneratedCarousel,
+  type Slide,
+  type SlideType,
+} from "@/lib/types";
 
 export interface PromptInput {
   topic: string;
@@ -17,11 +22,23 @@ export interface PromptInput {
 }
 
 export const TONES: Record<string, { label: string; desc: string }> = {
-  didatico: { label: "Didático", desc: "didático e claro, como um professor que simplifica" },
-  profissional: { label: "Profissional", desc: "profissional e técnico, com autoridade" },
-  provocativo: { label: "Provocativo", desc: "provocativo e direto, que quebra crenças" },
+  didatico: {
+    label: "Didático",
+    desc: "didático e claro, como um professor que simplifica",
+  },
+  profissional: {
+    label: "Profissional",
+    desc: "profissional e técnico, com autoridade",
+  },
+  provocativo: {
+    label: "Provocativo",
+    desc: "provocativo e direto, que quebra crenças",
+  },
   inspirador: { label: "Inspirador", desc: "inspirador e motivacional" },
-  descontraido: { label: "Descontraído", desc: "descontraído, leve e bem-humorado" },
+  descontraido: {
+    label: "Descontraído",
+    desc: "descontraído, leve e bem-humorado",
+  },
 };
 
 export function buildPrompt(input: PromptInput) {
@@ -61,21 +78,41 @@ RESPONDA APENAS COM O JSON ABAIXO, SEM TEXTO ANTES OU DEPOIS:
 const VALID: SlideType[] = ["cover", "content", "list", "stat", "quote", "cta"];
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : undefined);
 
-export function normalizeCarousel(raw: unknown, fallbackTitle = "Meu carrossel"): GeneratedCarousel {
+export function normalizeCarousel(
+  raw: unknown,
+  fallbackTitle = "Meu carrossel",
+): GeneratedCarousel {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const rawSlides = Array.isArray(r.slides) ? (r.slides as Record<string, unknown>[]) : Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
+  const rawSlides = Array.isArray(r.slides)
+    ? (r.slides as Record<string, unknown>[])
+    : Array.isArray(raw)
+      ? (raw as Record<string, unknown>[])
+      : [];
 
   let slides: Slide[] = rawSlides
+    .filter((s) => s && typeof s === "object")
+    .slice(0, 15)
     .map((s) => {
       const t = String(s.type || "").toLowerCase();
-      const type: SlideType = VALID.includes(t as SlideType) ? (t as SlideType) : s.bullets ? "list" : s.stat ? "stat" : "content";
+      const type: SlideType = VALID.includes(t as SlideType)
+        ? (t as SlideType)
+        : s.bullets
+          ? "list"
+          : s.stat
+            ? "stat"
+            : "content";
       return {
         id: uid(),
         type,
         kicker: str(s.kicker),
         title: str(s.title) || str(s.headline) || str(s.titulo) || "",
         body: str(s.body) || str(s.text) || str(s.texto) || str(s.subtitle),
-        bullets: Array.isArray(s.bullets) ? (s.bullets as unknown[]).map((b) => String(b).trim()).filter(Boolean).slice(0, 6) : undefined,
+        bullets: Array.isArray(s.bullets)
+          ? (s.bullets as unknown[])
+              .map((b) => String(b).trim())
+              .filter(Boolean)
+              .slice(0, 6)
+          : undefined,
         stat: str(s.stat),
         author: str(s.author) || str(s.autor),
         cta: str(s.cta),
@@ -83,14 +120,17 @@ export function normalizeCarousel(raw: unknown, fallbackTitle = "Meu carrossel")
     })
     .filter((s) => s.title || s.body || s.bullets?.length);
 
-  if (slides.length < 2) throw new Error("Não encontrei slides suficientes na resposta.");
+  if (slides.length < 2)
+    throw new Error("Não encontrei slides suficientes na resposta.");
   slides[0].type = "cover";
   const last = slides[slides.length - 1];
   last.type = "cta";
   if (!last.cta) last.cta = "Salvar post";
 
   let k = 1;
-  slides = slides.map((s) => (s.type === "content" ? { ...s, kicker: String(k++).padStart(2, "0") } : s));
+  slides = slides.map((s) =>
+    s.type === "content" ? { ...s, kicker: String(k++).padStart(2, "0") } : s,
+  );
 
   return {
     title: str(r.title) || slides[0].title || fallbackTitle,
@@ -100,13 +140,23 @@ export function normalizeCarousel(raw: unknown, fallbackTitle = "Meu carrossel")
 }
 
 /** Lê a resposta colada da IA: aceita JSON puro, JSON dentro de ```blocos``` ou texto "Slide 1: ...". */
-export function parseAIResponse(text: string, fallbackTitle?: string): GeneratedCarousel {
-  const cleaned = text.replace(/```(?:json)?/gi, "").replace(/[“”]/g, '"').trim();
+export function parseAIResponse(
+  text: string,
+  fallbackTitle?: string,
+): GeneratedCarousel {
+  if (text.length > 100000) throw new Error("Resposta muito longa.");
+  const cleaned = text
+    .replace(/```(?:json)?/gi, "")
+    .replace(/[“”]/g, '"')
+    .trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start !== -1 && end > start) {
     try {
-      return normalizeCarousel(JSON.parse(cleaned.slice(start, end + 1)), fallbackTitle);
+      return normalizeCarousel(
+        JSON.parse(cleaned.slice(start, end + 1)),
+        fallbackTitle,
+      );
     } catch {
       /* tenta texto livre */
     }
@@ -120,17 +170,35 @@ function parsePlainText(text: string) {
     .split(/\n(?=\s*(?:slide|lâmina|card)\s*\d+)/i)
     .map((b) => b.trim())
     .filter(Boolean);
-  const parts = blocks.length > 1 ? blocks : text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  const parts =
+    blocks.length > 1
+      ? blocks
+      : text
+          .split(/\n\s*\n/)
+          .map((b) => b.trim())
+          .filter(Boolean);
   const slides = parts.map((b) => {
     const lines = b
       .split("\n")
-      .map((l) => l.replace(/^\s*(?:slide|lâmina|card)\s*\d+\s*[:\-–—.)]*\s*/i, "").replace(/^\*+|\*+$/g, "").trim())
+      .map((l) =>
+        l
+          .replace(/^\s*(?:slide|lâmina|card)\s*\d+\s*[:\-–—.)]*\s*/i, "")
+          .replace(/^\*+|\*+$/g, "")
+          .trim(),
+      )
       .filter(Boolean);
-    const bullets = lines.filter((l) => /^[-•*✓✔]\s+/.test(l)).map((l) => l.replace(/^[-•*✓✔]\s+/, ""));
+    const bullets = lines
+      .filter((l) => /^[-•*✓✔]\s+/.test(l))
+      .map((l) => l.replace(/^[-•*✓✔]\s+/, ""));
     const rest = lines.filter((l) => !/^[-•*✓✔]\s+/.test(l));
     const title = (rest[0] || "").replace(/^(t[ií]tulo|title)\s*:\s*/i, "");
-    const body = rest.slice(1).join(" ").replace(/^(texto|body|corpo)\s*:\s*/i, "");
-    return bullets.length >= 2 ? { type: "list", title, bullets } : { type: "content", title, body };
+    const body = rest
+      .slice(1)
+      .join(" ")
+      .replace(/^(texto|body|corpo)\s*:\s*/i, "");
+    return bullets.length >= 2
+      ? { type: "list", title, bullets }
+      : { type: "content", title, body };
   });
   return { slides };
 }

@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { FORMAT_SIZES } from "@/lib/types";
 import { NICHES } from "@/data/niches";
 import { buildNicheCarousel } from "@/lib/sample";
 import { buildPrompt, parseAIResponse } from "@/lib/ai/prompt";
 import {
   TEMPLATES,
   TEMPLATE_CATEGORIES,
-  getTemplate,
   FONTS,
   type Template,
   type FontKey,
@@ -26,6 +26,7 @@ interface UserProfile {
   email: string;
   plan: string; // FREE | LIFETIME
   freeTrialsUsed: number;
+  isAdmin?: boolean;
   brandKit?: {
     id: string;
     displayName: string;
@@ -52,9 +53,13 @@ export default function MagicCarouselsApp() {
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
   const [authError, setAuthError] = useState("");
   const [authPending, setAuthPending] = useState(false);
-  const [authEmail, setAuthEmail] = useState("suporte.splinkagencia@gmail.com");
-  const [authPassword, setAuthPassword] = useState("xvpc7gn8");
-  const [authName, setAuthName] = useState("Splink Agência");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [carouselId, setCarouselId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
   // Modal de Perfil do Cliente (Brand Kit permanente)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -76,7 +81,7 @@ export default function MagicCarouselsApp() {
   const [leadPhone, setLeadPhone] = useState("");
   const [leadLoading, setLeadLoading] = useState(false);
   const [leadError, setLeadError] = useState("");
-  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("https://chat.whatsapp.com/exemplo-comunidade-vip");
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("");
 
   // Cronômetro Regressivo de Escassez (Oferta de Lançamento)
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
@@ -100,7 +105,15 @@ export default function MagicCarouselsApp() {
 
   // Template ativo no carrossel
   const [currentTemplateId, setCurrentTemplateId] = useState<string>("fit-beast-neon");
-  const [customTemplates, setCustomTemplates] = useState<Template[]>([]);
+  const [customTemplates, setCustomTemplates] = useState<Template[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("mc_custom_templates");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Edição visual do Carrossel (Maior poder de edição)
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
@@ -115,15 +128,32 @@ export default function MagicCarouselsApp() {
   const [format, setFormat] = useState<CarouselFormat>("4:5");
 
   // Carrossel de slides gerado
-  const [slides, setSlides] = useState<Slide[]>([]);
-  const [carouselTitle, setCarouselTitle] = useState("");
-  const [carouselCaption, setCarouselCaption] = useState("");
+  const [slides, setSlides] = useState<Slide[]>(() => {
+    try {
+      return buildNicheCarousel("fitness", 7, "alimentação low carb para secar").slides;
+    } catch {
+      return [];
+    }
+  });
+  const [carouselTitle, setCarouselTitle] = useState(() => {
+    try {
+      return buildNicheCarousel("fitness", 7, "alimentação low carb para secar").title;
+    } catch {
+      return "";
+    }
+  });
+  const [carouselCaption, setCarouselCaption] = useState(() => {
+    try {
+      return buildNicheCarousel("fitness", 7, "alimentação low carb para secar").caption;
+    } catch {
+      return "";
+    }
+  });
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Modo Prompt Mágico (sem precisar de API)
   const [mode, setMode] = useState<"direct" | "magic-prompt">("direct");
-  const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [aiPastedText, setAiPastedText] = useState("");
   const [parseError, setParseError] = useState("");
@@ -135,7 +165,6 @@ export default function MagicCarouselsApp() {
   const [showSocialToast, setShowSocialToast] = useState<boolean>(true);
 
   // Gerador de Legenda Magnética & Hashtags Estratégicas para o Post
-  const [postCaptionData, setPostCaptionData] = useState<GeneratedCaption | null>(null);
   const [captionCopied, setCaptionCopied] = useState<boolean>(false);
   const [tagsCopied, setTagsCopied] = useState<boolean>(false);
   const [editedCaptionText, setEditedCaptionText] = useState<string>("");
@@ -171,10 +200,7 @@ export default function MagicCarouselsApp() {
   const [studioUppercase, setStudioUppercase] = useState(false);
   const [studioBorderRadius, setStudioBorderRadius] = useState<number>(24);
 
-  // Checkout Stone / Pagar.me & Mercado Pago
-  const [paymentGateway, setPaymentGateway] = useState<"mercadopago" | "pagarme">("mercadopago");
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">("pix");
-  const [pixData, setPixData] = useState<{ qrCode: string; qrCodeUrl: string; orderId: string; gateway?: string } | null>(null);
+  // Checkout hospedado no Mercado Pago.
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "pending" | "paid" | "error">("idle");
   const [isPaidLifetime, setIsPaidLifetime] = useState(false);
 
@@ -225,16 +251,6 @@ export default function MagicCarouselsApp() {
     }
     loadUserSession();
 
-    try {
-      const saved = localStorage.getItem("mc_custom_templates");
-      if (saved) {
-        setCustomTemplates(JSON.parse(saved));
-      }
-    } catch {
-      // ignora
-    }
-    generateDirect(true);
-
     // Buscar dados de escassez em tempo real do banco de dados
     async function loadScarcity() {
       try {
@@ -249,6 +265,27 @@ export default function MagicCarouselsApp() {
     loadScarcity();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const id = new URLSearchParams(window.location.search).get("project");
+    if (id) fetch("/api/carousels/" + encodeURIComponent(id)).then(async res => {
+      const item = await res.json(); if (!res.ok) throw new Error(item.error);
+      setCarouselId(item.id); setSlides(item.slides); setCarouselTitle(item.title); setCarouselCaption(item.caption); setEditedCaptionText(item.caption);
+      setFormat(item.format); setSelectedNiche(item.niche); setTopic(item.title);
+      const a = item.appearance || {};
+      if(a.customTemplate) { setCustomTemplates(prev => [...prev.filter(t=>t.id!==a.customTemplate.id),a.customTemplate]); setCurrentTemplateId(a.customTemplate.id); }
+      else setCurrentTemplateId(item.template_id);
+      setCustomBgColor(a.bgColor || ""); setCustomTextColor(a.textColor || ""); setCustomAccentColor(a.accent || "");
+      setTitleFontSize(a.titleSize || 22); setIsUppercase(Boolean(a.uppercase)); setHandle(a.handle || ""); setAvatarImage(a.avatarUrl || null);
+      setTextAlign(item.slides[0]?.align || "left"); setActiveTab("creator");
+    }).catch(e => setSaveMessage(e.message));
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    const ping = () => { if(document.visibilityState === "visible") fetch("/api/presence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:"/" + activeTab})}).catch(()=>{}); };
+    ping(); const timer = setInterval(ping,30000); return () => clearInterval(timer);
+  }, [user?.id, activeTab]);
+
   // Rotação de prova social ao vivo a cada 7.5 segundos
   useEffect(() => {
     const t = setInterval(() => {
@@ -257,23 +294,23 @@ export default function MagicCarouselsApp() {
     return () => clearInterval(t);
   }, []);
 
-  // Atualiza legenda magnética e hashtags estratégicas do post automaticamente
-  useEffect(() => {
-    const cap = generatePostCaption({
+  // Legenda magnética e hashtags estratégicas calculadas de forma reativa
+  const postCaptionData = useMemo(() => {
+    return generatePostCaption({
       niche: selectedNiche,
       topic,
       handle,
       slidesCount: slides.length,
       slideTitles: slides.map((s) => s.title),
     });
-    setPostCaptionData(cap);
-    setEditedCaptionText(cap.fullCaption);
-  }, [topic, selectedNiche, handle, slides]);
+  }, [selectedNiche, topic, handle, slides]);
+
+  const activeCaptionText = editedCaptionText !== "" ? editedCaptionText : (postCaptionData?.fullCaption || "");
 
   // Funções de copiar legenda e tags em 1 clique
   const handleCopyFullCaption = () => {
-    if (!editedCaptionText) return;
-    navigator.clipboard.writeText(editedCaptionText);
+    if (!activeCaptionText) return;
+    navigator.clipboard.writeText(activeCaptionText);
     setCaptionCopied(true);
     setTimeout(() => setCaptionCopied(false), 3000);
   };
@@ -326,22 +363,21 @@ export default function MagicCarouselsApp() {
       }
     } catch (err) {
       console.error(err);
-      setLeadStep("success");
+      setLeadError("Não foi possível enviar. Tente novamente mais tarde.");
     } finally {
       setLeadLoading(false);
     }
   };
 
-  // Atualiza prompt mágico
-  useEffect(() => {
-    const p = buildPrompt({
+  // Prompt mágico reativo
+  const generatedPrompt = useMemo(() => {
+    return buildPrompt({
       topic,
       niche: selectedNiche,
       slideCount,
       tone: selectedTone,
       handle,
     });
-    setGeneratedPrompt(p);
   }, [topic, selectedNiche, slideCount, selectedTone, handle]);
 
   // Obter o template atual mesclando com os customs
@@ -377,39 +413,47 @@ export default function MagicCarouselsApp() {
 
     setIsGenerating(true);
     try {
-      if (user.plan === "FREE" && !isPaidLifetime) {
-        const trialRes = await fetch("/api/usage/use-trial", { method: "POST" });
-        const trialData = await trialRes.json();
-        if (!trialData.allowed) {
-          setPaywallMessage(trialData.message || "Limite de teste gratuito atingido.");
-          setIsPaywallOpen(true);
-          setIsGenerating(false);
-          return;
-        }
-        setUser((prev) => prev ? { ...prev, freeTrialsUsed: 1 } : null);
-      }
-
-      setTimeout(() => {
-        try {
-          const sample = buildNicheCarousel(selectedNiche, slideCount, topic);
-          setSlides(sample.slides);
-          setCarouselTitle(sample.title);
-          setCarouselCaption(sample.caption);
-          setActiveSlideIndex(0);
-          scrollToSlide(0, "both");
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setIsGenerating(false);
-        }
-      }, 400);
-    } catch (err) {
-      console.error(err);
-      setIsGenerating(false);
-    }
+      const sample = buildNicheCarousel(selectedNiche, slideCount, topic);
+      if (!(await persistCarousel(sample.slides, sample.title, sample.caption, null))) return;
+      setSlides(sample.slides);
+      setCarouselTitle(sample.title);
+      setCarouselCaption(sample.caption);
+      setActiveSlideIndex(0);
+      scrollToSlide(0, "both");
+    } finally { setIsGenerating(false); }
   };
 
-  // Funções de deslizar estilo Instagram (Touch Swipe & Mouse Drag)
+  async function persistCarousel(nextSlides = slides, title = carouselTitle, caption = activeCaptionText || carouselCaption, id = carouselId) {
+    if (!user) { setIsAuthModalOpen(true); return false; }
+    if (saving) return false;
+    setSaving(true);
+    setSaveMessage("Salvando…");
+    try {
+      const payload = JSON.stringify({
+        title: (title || topic).slice(0, 140), niche: selectedNiche,
+        templateId: currentTemplateId.startsWith("custom_") ? "fit-beast-neon" : currentTemplateId,
+        slides: nextSlides.map(slide => ({...slide, align: textAlign})), caption, format,
+        appearance: {
+          ...(customBgColor ? {bgColor: customBgColor} : {}),
+          ...(customTextColor ? {textColor: customTextColor} : {}),
+          ...(customAccentColor ? {accent: customAccentColor} : {}),
+          handle, displayName: user.brandKit?.displayName || user.name, avatarUrl: avatarImage,
+          titleSize: titleFontSize, uppercase: isUppercase,
+          ...(currentTemplateId.startsWith("custom_") ? {customTemplate: activeTemplate} : {}),
+        },
+      });
+      if (new Blob([payload]).size > 4000000) throw new Error("As imagens juntas excedem 4 MB. Reduza as imagens antes de salvar.");
+      const res = await fetch(id ? "/api/carousels/" + id : "/api/carousels", {method:id ? "PUT" : "POST",headers:{"Content-Type":"application/json"},body:payload});
+      const data = await res.json();
+      if (!res.ok) { if(res.status===402){setPaywallMessage(data.error);setIsPaywallOpen(true);} throw new Error(data.error || "Não foi possível salvar."); }
+      if (!id) { setCarouselId(data.id); setUser(prev => prev ? {...prev,freeTrialsUsed:prev.freeTrialsUsed + 1} : prev); window.history.replaceState(null,"","/?project=" + data.id); }
+      setSaveMessage("Projeto salvo na sua conta.");
+      return true;
+    } catch(error) { setSaveMessage(error instanceof Error ? error.message : "Erro ao salvar."); return false; }
+    finally { setSaving(false); }
+  }
+
+  // Funções de deslizar  // Funções de deslizar estilo Instagram (Touch Swipe & Mouse Drag)
   const scrollToSlide = (index: number, target: "landing" | "creator" | "both" = "creator") => {
     setActiveSlideIndex(index);
     if ((target === "creator" || target === "both") && creatorSliderRef.current) {
@@ -459,8 +503,8 @@ export default function MagicCarouselsApp() {
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("A imagem deve ter menos de 5MB.");
+      if (file.size > 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+        alert("Use uma imagem PNG, JPG ou WebP de até 1 MB.");
         return;
       }
       const reader = new FileReader();
@@ -499,47 +543,9 @@ export default function MagicCarouselsApp() {
     }
   };
 
-  // Login Social com 1 clique (Google, Apple/iCloud, Facebook)
-  const handleSocialLogin = async (provider: "google" | "apple" | "facebook") => {
-    setAuthPending(true);
-    setAuthError("");
-    try {
-      let socialName = "Criador Pro";
-      let socialEmail = `${provider}_user_${Date.now().toString().slice(-4)}@exemplo.com`;
-      let socialAvatar = avatarImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}`;
-
-      if (provider === "google") socialName = "Usuário Google";
-      else if (provider === "apple") socialName = "Usuário Apple";
-      else if (provider === "facebook") socialName = "Usuário Facebook";
-
-      const res = await fetch("/api/auth/social", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          name: socialName,
-          email: socialEmail,
-          avatarUrl: socialAvatar,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.ok && data.user) {
-        setUser(data.user);
-        if (data.user.brandKit?.handle) setHandle(data.user.brandKit.handle);
-        if (data.user.brandKit?.avatarUrl) setAvatarImage(data.user.brandKit.avatarUrl);
-        if (data.user.plan === "LIFETIME") setIsPaidLifetime(true);
-        setIsAuthModalOpen(false);
-        setActiveTab("creator");
-      } else {
-        setAuthError(data.message || data.error || "Erro no login social.");
-      }
-    } catch (err) {
-      console.error(err);
-      setAuthError("Erro de conexão ao autenticar.");
-    } finally {
-      setAuthPending(false);
-    }
+  // OAuth será habilitado quando os provedores estiverem configurados.
+  const handleSocialLogin = (_provider: "google" | "apple" | "facebook") => {
+    setAuthError("O login social ainda não está disponível. Entre ou crie sua conta com e-mail e senha.");
   };
 
   // Login / Cadastro com e-mail e senha
@@ -551,7 +557,7 @@ export default function MagicCarouselsApp() {
       const endpoint = authModalMode === "login" ? "/api/auth/login" : "/api/auth/register";
       const payload = authModalMode === "login"
         ? { email: authEmail, password: authPassword }
-        : { name: authName, email: authEmail, password: authPassword };
+        : { name: authName, email: authEmail, password: authPassword, acceptTerms };
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -560,7 +566,10 @@ export default function MagicCarouselsApp() {
       });
 
       const data = await res.json();
-      if (data.ok && data.user) {
+      if (res.ok && data.ok) {
+        const session = await fetch("/api/auth/me").then(r => r.json());
+        if (!session.user) throw new Error("Sessão não encontrada.");
+        data.user = session.user;
         setUser(data.user);
         if (data.user.brandKit?.handle) setHandle(data.user.brandKit.handle);
         if (data.user.brandKit?.avatarUrl) setAvatarImage(data.user.brandKit.avatarUrl);
@@ -594,6 +603,7 @@ export default function MagicCarouselsApp() {
   const handleSlideImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && slides[activeSlideIndex]) {
+      if (file.size > 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) { alert("Use PNG, JPG ou WebP de até 1 MB."); return; }
       const reader = new FileReader();
       reader.onload = () => {
         const updated = [...slides];
@@ -653,6 +663,7 @@ export default function MagicCarouselsApp() {
     }
     try {
       const parsed = parseAIResponse(aiPastedText, topic);
+      setCarouselId(null);
       setSlides(parsed.slides);
       setCarouselTitle(parsed.title);
       setCarouselCaption(parsed.caption);
@@ -673,17 +684,14 @@ export default function MagicCarouselsApp() {
       setIsAuthModalOpen(true);
       return;
     }
-    if (user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime) {
-      setPaywallMessage(`Para baixar novas lâminas sem marca d'água e sem limites, ative o Plano Vitalício por apenas ${scarcityTier.priceFormatted}.`);
-      setIsPaywallOpen(true);
-      return;
-    }
 
+    if (!(await persistCarousel())) return;
+    await document.fonts.ready;
     const { toPng } = await import("html-to-image");
     const node = document.getElementById(`live-slide-render-${activeSlideIndex}`);
     if (!node) return;
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 2.5 });
+      const dataUrl = await toPng(node, { pixelRatio: 1080 / node.offsetWidth });
       const link = document.createElement("a");
       link.download = `carrossel-slide-${activeSlideIndex + 1}.png`;
       link.href = dataUrl;
@@ -699,22 +707,19 @@ export default function MagicCarouselsApp() {
       setIsAuthModalOpen(true);
       return;
     }
-    if (user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime) {
-      setPaywallMessage(`O download do pacote ZIP com todas as lâminas em alta definição está disponível para membros Vitalícios por ${scarcityTier.priceFormatted}.`);
-      setIsPaywallOpen(true);
-      return;
-    }
 
+    if (!(await persistCarousel())) return;
+    await document.fonts.ready;
     const { toPng } = await import("html-to-image");
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
 
     try {
-      alert("Gerando todas as lâminas em alta definição (1080x1350)...");
+      setSaveMessage("Gerando todas as lâminas em alta definição…");
       for (let i = 0; i < slides.length; i++) {
         const node = document.getElementById(`live-slide-render-${i}`);
         if (node) {
-          const dataUrl = await toPng(node, { pixelRatio: 2.5 });
+          const dataUrl = await toPng(node, { pixelRatio: 1080 / node.offsetWidth });
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
           zip.file(`slide-${i + 1}.png`, base64Data, { base64: true });
         }
@@ -735,29 +740,26 @@ export default function MagicCarouselsApp() {
       setIsAuthModalOpen(true);
       return;
     }
-    if (user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime) {
-      setPaywallMessage(`O gerador de PDF pronto para o LinkedIn requer a licença Vitalícia por ${scarcityTier.priceFormatted}.`);
-      setIsPaywallOpen(true);
-      return;
-    }
 
+    if (!(await persistCarousel())) return;
+    await document.fonts.ready;
     const { toPng } = await import("html-to-image");
     const { jsPDF } = await import("jspdf");
 
     try {
-      alert("Criando documento carrossel em PDF para LinkedIn...");
+      setSaveMessage("Criando documento carrossel em PDF…");
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "px",
-        format: [1080, 1350],
+        format: [FORMAT_SIZES[format].w, FORMAT_SIZES[format].h],
       });
 
       for (let i = 0; i < slides.length; i++) {
         const node = document.getElementById(`live-slide-render-${i}`);
         if (node) {
-          const dataUrl = await toPng(node, { pixelRatio: 2.5 });
-          if (i > 0) pdf.addPage([1080, 1350], "portrait");
-          pdf.addImage(dataUrl, "PNG", 0, 0, 1080, 1350);
+          const dataUrl = await toPng(node, { pixelRatio: 1080 / node.offsetWidth });
+          if (i > 0) pdf.addPage([FORMAT_SIZES[format].w, FORMAT_SIZES[format].h], "portrait");
+          pdf.addImage(dataUrl, "PNG", 0, 0, FORMAT_SIZES[format].w, FORMAT_SIZES[format].h);
         }
       }
       pdf.save(`carrossel-linkedin-${topic.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.pdf`);
@@ -808,57 +810,16 @@ export default function MagicCarouselsApp() {
     setActiveTab("creator");
   };
 
-  // Checkout Seguro: Mercado Pago & Stone
+  // A licença só é concedida pelo servidor após confirmação do Mercado Pago.
   const handleStartCheckout = async () => {
+    if (!user) { setIsAuthModalOpen(true); return; }
+    setPaymentStatus("pending");
     try {
-      setPaymentStatus("pending");
-      const res = await fetch("/api/payments/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gateway: paymentGateway,
-          method: paymentMethod,
-          name: user?.name || handle,
-          email: user?.email || `${handle}@exemplo.com`,
-          simulate: false,
-        }),
-      });
+      const res = await fetch("/api/payments/create", {method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
       const data = await res.json();
-      if (data.success) {
-        if (paymentMethod === "pix") {
-          setPixData({ qrCode: data.qrCode, qrCodeUrl: data.qrCodeUrl, orderId: data.orderId, gateway: data.gateway });
-        } else {
-          setIsPaidLifetime(true);
-          setPaymentStatus("paid");
-          if (user) setUser({ ...user, plan: "LIFETIME" });
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      setPaymentStatus("error");
-    }
-  };
-
-  const handleSimulatePaymentApproval = async () => {
-    if (!pixData?.orderId) return;
-    try {
-      const res = await fetch("/api/payments/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: pixData.orderId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsPaidLifetime(true);
-        setPaymentStatus("paid");
-        if (user) setUser({ ...user, plan: "LIFETIME" });
-        setIsPaywallOpen(false);
-        const gwName = pixData.gateway === "mercadopago" ? "Mercado Pago" : "Stone";
-        alert(`🎉 Pagamento ${gwName} Aprovado! Licença Vitalícia liberada com sucesso.`);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      if (!res.ok || !data.url) throw new Error(data.error || "Checkout indisponível.");
+      window.location.assign(data.url);
+    } catch(error) { setPaymentStatus("error"); alert(error instanceof Error ? error.message : "Erro ao abrir pagamento."); }
   };
 
   // Cores dinâmicas do slide ativo
@@ -1881,12 +1842,15 @@ export default function MagicCarouselsApp() {
                   type="password"
                   required
                   className="studio-input"
+                  minLength={authModalMode === "register" ? 12 : undefined}
+                  autoComplete={authModalMode === "register" ? "new-password" : "current-password"}
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                 />
               </div>
 
+              {authModalMode === "register" && <label style={{display:"flex",gap:8,fontSize:12,alignItems:"flex-start"}}><input type="checkbox" required checked={acceptTerms} onChange={e => setAcceptTerms(e.target.checked)} /> <span>Li e aceito os <Link href="/termos" target="_blank">Termos de Uso</Link> e a <Link href="/privacidade" target="_blank">Política de Privacidade</Link>.</span></label>}
               {authError && (
                 <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "10px", borderRadius: "10px", color: "#f87171", fontSize: "12px", fontWeight: 700 }}>
                   ⚠️ {authError}
@@ -1997,7 +1961,7 @@ export default function MagicCarouselsApp() {
                     Sua Foto Oficial de Perfil
                   </label>
                   <div style={{ display: "flex", gap: "8px" }}>
-                    <input type="file" accept="image/*" id="modal-avatar" onChange={handleAvatarUpload} style={{ display: "none" }} />
+                    <input type="file" accept="image/png,image/jpeg,image/webp" id="modal-avatar" onChange={handleAvatarUpload} style={{ display: "none" }} />
                     <label
                       htmlFor="modal-avatar"
                       style={{
@@ -2143,7 +2107,8 @@ export default function MagicCarouselsApp() {
       )}
 
       {/* CONTEÚDO PRINCIPAL */}
-      <main style={{ flex: 1, padding: "16px 12px 90px 12px", maxWidth: "1400px", margin: "0 auto", width: "100%" }}>
+      <main id="conteudo" style={{ flex: 1, padding: "16px 12px 90px 12px", maxWidth: "1400px", margin: "0 auto", width: "100%" }}>
+        {user && <nav aria-label="Sua conta" className="account-tools"><Link href="/app">Meus projetos{user.isAdmin ? " e administração" : ""}</Link>{activeTab === "creator" && <button type="button" onClick={() => persistCarousel()} disabled={saving || isGenerating}>{saving ? "Salvando…" : "Salvar projeto"}</button>}<span role="status">{saveMessage}</span></nav>}
         {/* ============================================================ */}
         {/* ABA 1: PÁGINA DE VENDAS DE ALTA CONVERSÃO                    */}
         {/* ============================================================ */}
@@ -2263,7 +2228,7 @@ export default function MagicCarouselsApp() {
                   🛡️ <strong>7 dias</strong> de garantia incondicional
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  🔒 Pagamento seguro via <strong>Stone (Pagar.me)</strong>
+                  🔒 Pagamento seguro via <strong>Mercado Pago</strong>
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   📱 <strong>iOS, Android, Mac & Windows</strong>
@@ -2677,7 +2642,7 @@ export default function MagicCarouselsApp() {
                           🦷 <strong>Odontologia</strong> (8)
                         </div>
                         <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          📊 <strong>Contabilidade & Stone</strong> (8)
+                          📊 <strong>Contabilidade & Finanças</strong> (8)
                         </div>
                         <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
                           💄 <strong>Estética & Beleza</strong> (8)
@@ -2761,7 +2726,7 @@ export default function MagicCarouselsApp() {
               </div>
 
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "24px", fontSize: "12px", color: "#94a3b8" }}>
-                <span>🔒 Pagamento Blindado via Stone / Pagar.me</span>
+                <span>🔒 Pagamento Blindado via Mercado Pago</span>
                 <span>•</span>
                 <span>⚡ Reembolso Instantâneo no PIX ou Cartão</span>
                 <span>•</span>
@@ -3164,7 +3129,7 @@ export default function MagicCarouselsApp() {
                           🖼️ Imagem Ilustrativa Nesta Lâmina
                         </label>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <input type="file" accept="image/*" id={`slide-img-${activeSlideIndex}`} onChange={handleSlideImageUpload} style={{ display: "none" }} />
+                          <input type="file" accept="image/png,image/jpeg,image/webp" id={`slide-img-${activeSlideIndex}`} onChange={handleSlideImageUpload} style={{ display: "none" }} />
                           <label
                             htmlFor={`slide-img-${activeSlideIndex}`}
                             style={{
@@ -3494,7 +3459,7 @@ export default function MagicCarouselsApp() {
                     📝 Legenda Magnética & Hashtags Prontas (Copiar & Colar)
                   </h3>
                   <p style={{ fontSize: "13px", color: "#94a3b8", maxWidth: "680px", marginTop: "4px", lineHeight: 1.5 }}>
-                    O algoritmo do Instagram exige 3 coisas para viralizar: <strong>gancho antes do "... mais"</strong>, <strong>estrutura respirável com CTA</strong> e <strong>entre 8 a 15 hashtags nichadas</strong>. Já formatamos tudo para você só copiar e colar!
+                    O algoritmo do Instagram exige 3 coisas para viralizar: <strong>gancho antes do &quot;... mais&quot;</strong>, <strong>estrutura respirável com CTA</strong> e <strong>entre 8 a 15 hashtags nichadas</strong>. Já formatamos tudo para você só copiar e colar!
                   </p>
                 </div>
 
@@ -3586,14 +3551,14 @@ export default function MagicCarouselsApp() {
                       ✍️ Legenda Completa Formatada:
                     </span>
                     <span style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      {editedCaptionText.length} caracteres
+                      {activeCaptionText.length} caracteres
                     </span>
                   </div>
 
                   <textarea
                     rows={9}
                     className="studio-input"
-                    value={editedCaptionText}
+                    value={activeCaptionText}
                     onChange={(e) => setEditedCaptionText(e.target.value)}
                     style={{ flex: 1, fontSize: "12.5px", lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" }}
                   />
@@ -3975,7 +3940,7 @@ export default function MagicCarouselsApp() {
           </div>
         )}
 
-        {/* ABA 5: CHECKOUT STONE */}
+        {/* ABA 5: CHECKOUT MERCADO PAGO */}
         {activeTab === "checkout" && (
           <div style={{ maxWidth: "620px", margin: "20px auto", padding: "0 10px" }}>
             <div
@@ -3991,7 +3956,7 @@ export default function MagicCarouselsApp() {
                 <div>
                   <h2 style={{ fontSize: "24px", fontWeight: 900, color: "#ffffff" }}>Checkout Seguro</h2>
                   <p style={{ fontSize: "13px", color: "#94a3b8" }}>
-                    Processamento via {paymentGateway === "mercadopago" ? "Mercado Pago (Aprovação Instantânea)" : "Stone / Pagar.me API v5"}
+                    Processamento seguro via Mercado Pago
                   </p>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -4001,197 +3966,13 @@ export default function MagicCarouselsApp() {
                 </div>
               </div>
 
-              {/* SELETOR DE GATEWAY SEGURO */}
-              <div style={{ marginBottom: "20px" }}>
-                <span style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
-                  Selecione o Gateway de Pagamento:
-                </span>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentGateway("mercadopago");
-                      setPaymentMethod("pix");
-                      setPixData(null);
-                    }}
-                    style={{
-                      padding: "12px",
-                      borderRadius: "14px",
-                      border: paymentGateway === "mercadopago" ? "2px solid #009EE3" : "1px solid rgba(255,255,255,0.1)",
-                      background: paymentGateway === "mercadopago" ? "rgba(0, 158, 227, 0.18)" : "rgba(255,255,255,0.03)",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      color: "#ffffff",
-                      fontSize: "12.5px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <span>🟢</span>
-                    <span>Mercado Pago</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentGateway("pagarme");
-                      setPixData(null);
-                    }}
-                    style={{
-                      padding: "12px",
-                      borderRadius: "14px",
-                      border: paymentGateway === "pagarme" ? "2px solid #00A868" : "1px solid rgba(255,255,255,0.1)",
-                      background: paymentGateway === "pagarme" ? "rgba(0, 168, 104, 0.18)" : "rgba(255,255,255,0.03)",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      color: "#ffffff",
-                      fontSize: "12.5px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <span>⚡</span>
-                    <span>Stone (Pagar.me)</span>
-                  </button>
-                </div>
+              <div style={{background:"rgba(0,158,227,.12)",padding:20,borderRadius:14,marginBottom:20}}>
+                <strong>Mercado Pago · PIX e cartão de crédito</strong>
+                <p style={{color:"#cbd5e1",fontSize:14,marginTop:10}}>Você será direcionado ao ambiente seguro do Mercado Pago para escolher a forma de pagamento e concluir sua compra.</p>
               </div>
-
-              <div style={{ background: "rgba(225, 48, 108, 0.1)", border: "1px solid rgba(225, 48, 108, 0.25)", borderRadius: "12px", padding: "10px 14px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" }}>
-                <span style={{ color: "#ffffff", fontWeight: 700 }}>🔥 Vagas restantes deste lote:</span>
-                <span style={{ color: "#f472b6", fontWeight: 900 }}>{scarcityTier.remainingSlots} de {scarcityTier.maxUsers} vagas</span>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "24px" }}>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("pix")}
-                  style={{
-                    padding: "14px",
-                    borderRadius: "14px",
-                    border: paymentMethod === "pix" ? "2px solid #e1306c" : "1px solid rgba(255,255,255,0.1)",
-                    background: paymentMethod === "pix" ? "rgba(225, 48, 108, 0.15)" : "rgba(255,255,255,0.03)",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    color: "#ffffff",
-                    fontSize: "13.5px",
-                  }}
-                >
-                  🟢 PIX (Imediato)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("credit_card")}
-                  style={{
-                    padding: "14px",
-                    borderRadius: "14px",
-                    border: paymentMethod === "credit_card" ? "2px solid #e1306c" : "1px solid rgba(255,255,255,0.1)",
-                    background: paymentMethod === "credit_card" ? "rgba(225, 48, 108, 0.15)" : "rgba(255,255,255,0.03)",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    color: "#ffffff",
-                    fontSize: "13.5px",
-                  }}
-                >
-                  💳 Cartão de Crédito
-                </button>
-              </div>
-
-              {paymentMethod === "pix" && (
-                <div>
-                  {!pixData ? (
-                    <button
-                      type="button"
-                      onClick={handleStartCheckout}
-                      className="btn-primary-ig"
-                      style={{ width: "100%", padding: "16px", borderRadius: "12px", fontSize: "16px" }}
-                    >
-                      Gerar QR Code PIX ({paymentGateway === "mercadopago" ? "Mercado Pago" : "Stone"})
-                    </button>
-                  ) : (
-                    <div style={{ textAlign: "center", padding: "16px 0" }}>
-                      <div style={{ display: "inline-block", padding: "14px", background: "#ffffff", borderRadius: "20px", marginBottom: "16px" }}>
-                        <img src={pixData.qrCodeUrl} alt="QR Code Pix" style={{ width: "220px", height: "220px", display: "block" }} />
-                      </div>
-                      <div style={{ marginBottom: "16px" }}>
-                        <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                          Chave PIX Copia e Cola:
-                        </span>
-                        <input
-                          type="text"
-                          readOnly
-                          value={pixData.qrCode}
-                          onClick={(e) => (e.target as HTMLInputElement).select()}
-                          className="studio-input"
-                          style={{ fontSize: "11px", fontFamily: "monospace" }}
-                        />
-                      </div>
-
-                      <div style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "14px", borderRadius: "14px", marginTop: "16px" }}>
-                        <p style={{ fontSize: "12px", color: "#86efac", fontWeight: 700, marginBottom: "8px" }}>
-                          🛠️ Modo Demonstração Local:
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handleSimulatePaymentApproval}
-                          style={{
-                            background: "#22c55e",
-                            color: "white",
-                            border: "none",
-                            padding: "10px 18px",
-                            borderRadius: "8px",
-                            fontWeight: 800,
-                            fontSize: "13px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Simular Confirmação do Pagamento PIX
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {paymentMethod === "credit_card" && (
-                <div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
-                        Número do Cartão
-                      </label>
-                      <input type="text" placeholder="4000 0000 0000 0010" className="studio-input" />
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
-                          Validade
-                        </label>
-                        <input type="text" placeholder="12/29" className="studio-input" />
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
-                          CVV
-                        </label>
-                        <input type="text" placeholder="123" className="studio-input" />
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleStartCheckout}
-                    className="btn-primary-ig"
-                    style={{ width: "100%", padding: "16px", borderRadius: "12px", fontSize: "16px" }}
-                  >
-                    Confirmar Pagamento Stone no Cartão
-                  </button>
-                </div>
-              )}
+              <button type="button" onClick={handleStartCheckout} disabled={paymentStatus === "pending"} className="btn-primary-ig" style={{width:"100%",padding:16}}>
+                {paymentStatus === "pending" ? "Abrindo pagamento…" : "Continuar no Mercado Pago"}
+              </button>
 
               {paymentStatus === "paid" && (
                 <div style={{ textAlign: "center", marginTop: "20px", color: "#22c55e", fontWeight: 800, fontSize: "15px" }}>
@@ -4323,13 +4104,14 @@ export default function MagicCarouselsApp() {
           </div>
 
           <div style={{ color: "#64748b", fontSize: "11.5px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
-            <span>🔒 Pagamento Seguro via Mercado Pago & Stone</span>
+            <span>🔒 Pagamento Seguro via Mercado Pago</span>
             <span>•</span>
             <span>🛡️ Garantia de 7 Dias com Devolução Total</span>
             <span>•</span>
-            <span>📩 suporte.splinkagencia@gmail.com</span>
+            <span>📩 comercial@splinkapp.com.br</span>
           </div>
         </div>
+        <nav aria-label="Informações da empresa" className="legal-links"><Link href="/sobre">Sobre</Link><Link href="/contato">Contato</Link><Link href="/privacidade">Política de Privacidade</Link><Link href="/termos">Termos de Uso</Link><Link href="/ajuda">Ajuda</Link></nav>
       </footer>
     </div>
   );
