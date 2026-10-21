@@ -48,15 +48,16 @@ export async function createMercadoPagoPix(
   const cleanCpf = (input.customer.cpf || "11144477735").replace(/\D/g, "");
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://magic-carousels.vercel.app";
+  const isValidHttpsUrl = appUrl.startsWith("https://") && !appUrl.includes("localhost");
   const notificationUrl =
-    input.notificationUrl || `${appUrl}/api/webhooks/mercadopago`;
+    input.notificationUrl || (isValidHttpsUrl ? `${appUrl}/api/webhooks/mercadopago` : undefined);
 
   const response = await payment.create({
     body: {
       transaction_amount: amountInReais,
       description: input.description,
       payment_method_id: "pix",
-      notification_url: notificationUrl,
+      ...(notificationUrl ? { notification_url: notificationUrl } : {}),
       payer: {
         email: input.customer.email,
         first_name: firstName,

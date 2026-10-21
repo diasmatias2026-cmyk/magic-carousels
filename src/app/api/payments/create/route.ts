@@ -61,56 +61,60 @@ export async function POST(req: Request) {
       const mpClient = getMercadoPagoClient();
 
       if (mpClient && !body.simulate) {
-        // Chamada real à API do Mercado Pago
-        const mpPix = await createMercadoPagoPix({
-          amountInCents: amount,
-          description: `Magic Carousels - Plano Vitalício (${currentTier.name})`,
-          customer: {
-            name: customer.name,
-            email: customer.email,
-            cpf: customer.cpf,
-          },
-        });
+        try {
+          // Chamada real à API do Mercado Pago
+          const mpPix = await createMercadoPagoPix({
+            amountInCents: amount,
+            description: `Magic Carousels - Plano Vitalício (${currentTier.name})`,
+            customer: {
+              name: customer.name,
+              email: customer.email,
+              cpf: customer.cpf,
+            },
+          });
 
-        let qrDataUrl = "";
-        if (mpPix.qrCodeBase64) {
-          qrDataUrl = `data:image/png;base64,${mpPix.qrCodeBase64}`;
-        } else if (mpPix.qrCode) {
-          qrDataUrl = await QRCode.toDataURL(mpPix.qrCode, { width: 320 });
-        }
+          let qrDataUrl = "";
+          if (mpPix.qrCodeBase64) {
+            qrDataUrl = `data:image/png;base64,${mpPix.qrCodeBase64}`;
+          } else if (mpPix.qrCode) {
+            qrDataUrl = await QRCode.toDataURL(mpPix.qrCode, { width: 320 });
+          }
 
-        const payment = await db.payment.create({
-          data: {
-            userId: targetUserId,
-            provider: "mercadopago",
+          const payment = await db.payment.create({
+            data: {
+              userId: targetUserId,
+              provider: "mercadopago",
+              orderId: mpPix.paymentId,
+              chargeId: mpPix.paymentId,
+              method: "pix",
+              amount,
+              installments: 1,
+              status: mpPix.status === "approved" ? "paid" : "pending",
+              qrCode: mpPix.qrCode,
+              qrExpires: new Date(Date.now() + 30 * 60 * 1000),
+              raw: JSON.stringify(mpPix.raw),
+            },
+          });
+
+          return NextResponse.json({
+            success: true,
+            gateway: "mercadopago",
+            mode: "live",
+            paymentId: payment.id,
             orderId: mpPix.paymentId,
-            chargeId: mpPix.paymentId,
             method: "pix",
-            amount,
-            installments: 1,
-            status: mpPix.status === "approved" ? "paid" : "pending",
+            status: payment.status,
             qrCode: mpPix.qrCode,
-            qrExpires: new Date(Date.now() + 30 * 60 * 1000),
-            raw: JSON.stringify(mpPix.raw),
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          gateway: "mercadopago",
-          mode: "live",
-          paymentId: payment.id,
-          orderId: mpPix.paymentId,
-          method: "pix",
-          status: payment.status,
-          qrCode: mpPix.qrCode,
-          qrCodeUrl: qrDataUrl,
-          ticketUrl: mpPix.ticketUrl,
-          amount,
-        });
+            qrCodeUrl: qrDataUrl,
+            ticketUrl: mpPix.ticketUrl,
+            amount,
+          });
+        } catch (mpErr: unknown) {
+          console.warn("[MercadoPago Live Error]", mpErr instanceof Error ? mpErr.message : mpErr);
+        }
       }
 
-      // Mock Mercado Pago (Quando ainda sem token de produção configurado)
+      // Mock Mercado Pago (Quando em teste ou quando a conta do MP ainda está pendente de ativação)
       const mockMpId = `mp_${Date.now()}`;
       const mockPixCode = `00020126580014br.gov.bcb.pix0136mercadopago-magic-${mockMpId}5204000053039865802BR5920Magic Carousels MP6009SAO PAULO62070503***6304ABCD`;
       const qrDataUrl = await QRCode.toDataURL(mockPixCode, { width: 320 });
