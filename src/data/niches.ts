@@ -10,7 +10,10 @@ export type NicheId =
   | "contabilidade"
   | "viagem"
   | "beleza"
-  | "financas";
+  | "financas"
+  | "imobiliario"
+  | "religiao"
+  | "autoestima";
 
 export interface NicheContent {
   id: NicheId;
@@ -734,6 +737,198 @@ export const NICHES: NicheContent[] = [
       "#investimentos",
       "#dinheiro",
       "#educacaofinanceira",
+    ],
+  },
+  {
+    id: "imobiliario",
+    name: "Imobiliário & Corretores",
+    emoji: "🏢",
+    ring: ["#0284c7", "#38bdf8"],
+    sampleTopic: "5 detalhes que valorizam seu imóvel em até 30% antes de vender",
+    cover: {
+      kicker: "Mercado Imobiliário de Alto Padrão",
+      title: "5 detalhes que valorizam seu imóvel em até 30% antes de vender",
+      subtitle: "Pequenos ajustes estratégicos atraem compradores qualificados em menos de 15 dias.",
+    },
+    tips: [
+      {
+        title: "Iluminação quente e estratégica",
+        body: "Lâmpadas amareladas (2700K) criam sensação imediata de aconchego e amplitude nos ambientes principais.",
+      },
+      {
+        title: "Pintura neutra e impecável",
+        body: "Paredes em tons claros (off-white) transmitem sofisticação, limpeza e facilitam a visualização do comprador.",
+      },
+      {
+        title: "Despersonalização dos cômodos",
+        body: "Retire porta-retratos e excesso de objetos. O comprador precisa se imaginar morando no espaço.",
+      },
+      {
+        title: "Reparos invisíveis que incomodam",
+        body: "Torneiras pingando, rodapés lascados e portas rangendo geram desconfiança imediata sobre a manutenção geral.",
+      },
+      {
+        title: "Aromaterapia no momento da visita",
+        body: "Um aroma sutil de café fresco ou essência de baunilha ativa gatilhos olfativos de acolhimento e bem-estar.",
+      },
+    ],
+    list: {
+      title: "Checklist Rápido Pré-Visita",
+      bullets: [
+        "Janelas abertas para ventilar o ar",
+        "Cortinas alinhadas aproveitando luz natural",
+        "Camas feitas no padrão hotelaria de luxo",
+        "Banheiros com toalhas novas e bancadas secas",
+      ],
+    },
+    stat: {
+      value: "15 dias",
+      title: "é a média de fechamento com home staging",
+      body: "Imóveis bem preparados e fotografados profissionalmente vendem até 3x mais rápido.",
+    },
+    quote: {
+      text: "As pessoas não compram metros quadrados: compram a sensação de estar em casa.",
+      author: "Especialista em Negócios Imobiliários",
+    },
+    cta: {
+      title: "Quer avaliar seu imóvel com precisão de mercado?",
+      body: "Toque no link da bio para agendar uma consultoria exclusiva ou envie uma mensagem direta.",
+      cta: "Falar com um Especialista",
+    },
+    hashtags: [
+      "#mercadoimobiliario",
+      "#imoveisdeluxo",
+      "#corretordeimoveis",
+      "#arquitetura",
+      "#decoracao",
+      "#investimentoimobiliario",
+    ],
+  },
+  {
+    id: "religiao",
+    name: "Fé & Espiritualidade",
+    emoji: "✝️",
+    ring: ["#eab308", "#fde047"],
+    sampleTopic: "4 orações para blindar sua mente contra a ansiedade e o medo",
+    cover: {
+      kicker: "Mensagem de Fé & Esperança",
+      title: "4 orações para blindar sua mente contra a ansiedade e o medo",
+      subtitle: "Quando o coração aperta, a Palavra é o único refúgio seguro para a alma.",
+    },
+    tips: [
+      {
+        title: "Entregue o controle nas primeiras horas",
+        body: "Não comece o dia nas redes sociais. Comece no secreto, agradecendo pelo fôlego de vida e renovo diário.",
+      },
+      {
+        title: "Substitua a preocupação por louvor",
+        body: "A ansiedade antecipa o sofrimento, mas a adoração antecipa a vitória e traz uma paz inexplicável.",
+      },
+      {
+        title: "Filtre com zelo o que você consome",
+        body: "O que entra pelos seus olhos e ouvidos alimenta a sua fé ou alimenta as suas dúvidas. Escolha edificar.",
+      },
+      {
+        title: "Descanse na promessa, não no vento",
+        body: "O barco pode balançar, mas Aquele que acalma a tempestade jamais perdeu o controle da sua história.",
+      },
+    ],
+    list: {
+      title: "Versículos de Paz para Guardar no Coração",
+      bullets: [
+        "Filipenses 4:6-7 (A paz que excede todo entendimento)",
+        "Salmo 91 (Aquele que habita no esconderijo do Altíssimo)",
+        "Isaías 41:10 (Não temas, porque Eu sou contigo)",
+        "Mateus 11:28 (Vinde a mim todos os cansados e oprimidos)",
+      ],
+    },
+    stat: {
+      value: "365 vezes",
+      title: "a Bíblia diz “Não Temas”",
+      body: "Uma dose diária de coragem divina para cada dia do seu ano.",
+    },
+    quote: {
+      text: "A fé não torna as coisas mais fáceis: ela torna as coisas possíveis.",
+      author: "Mensagem de Esperança",
+    },
+    cta: {
+      title: "Gostou desta reflexão que edifica o espírito?",
+      body: "Compartilhe agora com alguém que precisa dessa palavra hoje e salve para reler quando o coração apertar.",
+      cta: "Compartilhar com quem Precisa",
+    },
+    hashtags: [
+      "#fe",
+      "#oracao",
+      "#deusnocontrole",
+      "#espiritualidade",
+      "#versiculododia",
+      "#pazinterior",
+      "#mensagembiblica",
+    ],
+  },
+  {
+    id: "autoestima",
+    name: "Autoestima & Autocuidado",
+    emoji: "✨",
+    ring: ["#ec4899", "#f43f5e"],
+    sampleTopic: "5 hábitos silenciosos que destroem sua autoestima sem você notar",
+    cover: {
+      kicker: "Amor-Próprio & Mentalidade",
+      title: "5 hábitos silenciosos que destroem sua autoestima sem você notar",
+      subtitle: "Aprenda a dizer 'não' para o mundo e 'sim' para a sua própria paz interior.",
+    },
+    tips: [
+      {
+        title: "Comparar seu bastidor com o palco alheio",
+        body: "Ninguém posta os dias difíceis, as inseguranças e o cansaço. Não meça seu valor pela régua editada dos outros.",
+      },
+      {
+        title: "Dizer “sim” querendo dizer “não”",
+        body: "Toda vez que você aceita algo apenas para agradar e ser aceita, quebra um acordo de respeito consigo mesma.",
+      },
+      {
+        title: "Pedir desculpas por existir ou ocupar espaço",
+        body: "Pare de se desculpar por emitir sua opinião, por ter limites saudáveis ou por exigir o respeito básico que merece.",
+      },
+      {
+        title: "Negligenciar o seu autocuidado essencial",
+        body: "Autocuidado não é luxo: é dormir na hora certa, beber água, se alimentar bem e se afastar de pessoas drenantes.",
+      },
+      {
+        title: "Depender de validação externa para se sentir suficiente",
+        body: "O aplauso do outro é um bônus: ele jamais deve ser o combustível da sua autoconfiança e do seu amor-próprio.",
+      },
+    ],
+    list: {
+      title: "Afirmações Diárias de Poder Pessoal",
+      bullets: [
+        "Eu sou suficiente exatamente como sou hoje",
+        "Meus limites são inegociáveis e protegem minha paz",
+        "Eu me trato com compaixão, respeito e paciência",
+        "Eu mereço viver uma vida próspera e em plenitude",
+      ],
+    },
+    stat: {
+      value: "21 dias",
+      title: "de limites saudáveis transformam sua postura",
+      body: "A autoconfiança é um músculo emocional que se fortalece com a prática da autoafirmação.",
+    },
+    quote: {
+      text: "Você não precisa ser perfeita para ser digna de amor, respeito e admiração.",
+      author: "Psicologia & Autocuidado",
+    },
+    cta: {
+      title: "Qual dessas verdades você mais precisava ouvir hoje?",
+      body: "Comente aqui embaixo e salve este carrossel para reler sempre que a sua mente tentar te sabotar.",
+      cta: "Salvar para se Lembrar",
+    },
+    hashtags: [
+      "#autoestima",
+      "#amorproprio",
+      "#desenvolvimentopessoal",
+      "#autoconhecimento",
+      "#saudemental",
+      "#mulheresempoderadas",
     ],
   },
 ];

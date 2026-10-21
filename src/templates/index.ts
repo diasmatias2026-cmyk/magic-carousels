@@ -2611,6 +2611,66 @@ export const TEMPLATES: Template[] = [
     ),
     fonts: { heading: "poppins", body: "inter" },
   },
+  {
+    id: "imob-luxury-gold",
+    name: "Imobiliário Luxury Gold",
+    category: "Imobiliário & Corretores",
+    niche: "imobiliario",
+    style: "editorial",
+    decoration: "corner",
+    colors: c(
+      "#080c14",
+      "#0f172a",
+      "#f8fafc",
+      "#94a3b8",
+      "#d97706",
+      "#f59e0b",
+      "#1e293b",
+      "#ffffff",
+      "rgba(217,119,6,0.35)",
+    ),
+    fonts: { heading: "playfair", body: "montserrat" },
+  },
+  {
+    id: "rel-sacred-gold",
+    name: "Fé & Esperança Divina",
+    category: "Fé & Espiritualidade",
+    niche: "religiao",
+    style: "clean",
+    decoration: "lines",
+    colors: c(
+      "#0f172a",
+      "#1e1b4b",
+      "#ffffff",
+      "#cbd5e1",
+      "#eab308",
+      "#facc15",
+      "#1e293b",
+      "#ffffff",
+      "rgba(234,179,8,0.35)",
+    ),
+    fonts: { heading: "dmserif", body: "inter" },
+  },
+  {
+    id: "auto-selflove-rose",
+    name: "Autoestima & Glow Pink",
+    category: "Autoestima & Autocuidado",
+    niche: "autoestima",
+    style: "gradient",
+    decoration: "blobs",
+    colors: c(
+      "#180d1b",
+      "#2e1065",
+      "#ffffff",
+      "#fbcfe8",
+      "#ec4899",
+      "#f43f5e",
+      "#3b0764",
+      "#ffffff",
+      "rgba(236,72,153,0.35)",
+    ),
+    fonts: { heading: "syne", body: "outfit" },
+  },
 ];
 
 export const TEMPLATE_CATEGORIES = [
@@ -2624,6 +2684,8 @@ export const TEMPLATE_CATEGORIES = [
   "Psicologia & Terapia",
   "Contabilidade & Finanças",
   "Imobiliário & Corretores",
+  "Fé & Espiritualidade",
+  "Autoestima & Autocuidado",
   "Estética & Beleza",
   "Negócios & B2B",
   "Tecnologia & Dev",
@@ -2646,6 +2708,9 @@ export function templatesForCategory(category: string) {
 }
 
 export function defaultTemplateForNiche(niche: string) {
+  if (niche === "imobiliario") return "imob-luxury-gold";
+  if (niche === "religiao") return "rel-sacred-gold";
+  if (niche === "autoestima") return "auto-selflove-rose";
   return TEMPLATES.find((t) => t.niche === niche)?.id ?? "mkt-sunset-viral";
 }
 
@@ -2653,4 +2718,7 @@ export const FREE_TEMPLATE_IDS = new Set([
   "mkt-sunset-viral",
   "med-clinical-blue",
   "fit-beast-neon",
+  "imob-luxury-gold",
+  "rel-sacred-gold",
+  "auto-selflove-rose",
 ]);

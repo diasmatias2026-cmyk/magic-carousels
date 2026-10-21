@@ -2,13 +2,14 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { FORMAT_SIZES } from "@/lib/types";
-import { NICHES } from "@/data/niches";
+import { FORMAT_SIZES, uid } from "@/lib/types";
+import { NICHES, getNiche, type NicheId } from "@/data/niches";
 import { buildNicheCarousel } from "@/lib/sample";
 import { buildPrompt, parseAIResponse } from "@/lib/ai/prompt";
 import {
   TEMPLATES,
   TEMPLATE_CATEGORIES,
+  defaultTemplateForNiche,
   FONTS,
   type Template,
   type FontKey,
@@ -544,6 +545,22 @@ export default function MagicCarouselsApp() {
     }
   };
 
+  // Troca interativa de nicho na landing page com demonstração no celular
+  const handleSelectLandingNiche = (nicheId: NicheId) => {
+    const n = getNiche(nicheId);
+    setSelectedNiche(nicheId);
+    setTopic(n.sampleTopic);
+    const tId = defaultTemplateForNiche(nicheId);
+    setCurrentTemplateId(tId);
+    const sample = buildNicheCarousel(nicheId, slideCount, n.sampleTopic);
+    setSlides(sample.slides);
+    setCarouselTitle(sample.title);
+    setCarouselCaption(sample.caption);
+    setEditedCaptionText("");
+    setActiveSlideIndex(0);
+    scrollToSlide(0, "landing");
+  };
+
   // Google Identity Services (Login com Google)
   useEffect(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -706,7 +723,7 @@ export default function MagicCarouselsApp() {
       return;
     }
     const newSlide: Slide = {
-      id: `s_${Date.now()}`,
+      id: uid(),
       type: "content",
       kicker: `0${slides.length}`,
       title: "Nova Dica Estratégica",
@@ -2713,35 +2730,83 @@ export default function MagicCarouselsApp() {
                           <div style={{ fontSize: "14px", fontWeight: 800, color: "#ffffff" }}>
                             Biblioteca Nichada para Especialistas
                           </div>
-                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>15 Profissões • Cores e Tipografias Cientificamente Validadas</span>
+                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>Toque em uma profissão para testar o modelo e texto no celular:</span>
                         </div>
+                        <span style={{ fontSize: "11px", color: "#f472b6", fontWeight: 800, background: "rgba(244,114,182,0.12)", padding: "3px 8px", borderRadius: "9999px" }}>
+                          ⚡ Demonstração Ao Vivo
+                        </span>
                       </div>
 
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11.5px", color: "#cbd5e1" }}>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          🚀 <strong>Marketing & Vendas</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          🩺 <strong>Medicina & Saúde</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          ⚖️ <strong>Direito & Advocacia</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          🥗 <strong>Nutrição & Dieta</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          🏋️‍♂️ <strong>Fitness & Treino</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          🦷 <strong>Odontologia</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          📊 <strong>Contabilidade & Finanças</strong> (8)
-                        </div>
-                        <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
-                          💄 <strong>Estética & Beleza</strong> (8)
-                        </div>
+                        {[
+                          { id: "imobiliario" as NicheId, label: "🏢 Imobiliário & Corretores", count: 8 },
+                          { id: "religiao" as NicheId, label: "✝️ Fé & Espiritualidade", count: 8 },
+                          { id: "autoestima" as NicheId, label: "✨ Autoestima & Autocuidado", count: 8 },
+                          { id: "marketing" as NicheId, label: "🚀 Marketing & Vendas", count: 8 },
+                          { id: "saude" as NicheId, label: "🩺 Medicina & Saúde", count: 8 },
+                          { id: "direito" as NicheId, label: "⚖️ Direito & Advocacia", count: 8 },
+                          { id: "nutricao" as NicheId, label: "🥗 Nutrição & Dieta", count: 8 },
+                          { id: "fitness" as NicheId, label: "🏋️‍♂️ Fitness & Treino", count: 8 },
+                          { id: "odontologia" as NicheId, label: "🦷 Odontologia", count: 8 },
+                          { id: "estetica" as NicheId, label: "💄 Estética & Beleza", count: 8 },
+                          { id: "contabilidade" as NicheId, label: "📊 Contabilidade & Finanças", count: 8 },
+                          { id: "viagem" as NicheId, label: "✈️ Viagem & Turismo", count: 8 },
+                        ].map((item) => {
+                          const isSelected = selectedNiche === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => handleSelectLandingNiche(item.id)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                background: isSelected
+                                  ? "linear-gradient(135deg, rgba(225, 48, 108, 0.28) 0%, rgba(131, 58, 180, 0.28) 100%)"
+                                  : "rgba(255,255,255,0.04)",
+                                border: isSelected
+                                  ? "1px solid #f472b6"
+                                  : "1px solid rgba(255,255,255,0.08)",
+                                borderRadius: "10px",
+                                padding: "9px 12px",
+                                color: isSelected ? "#ffffff" : "#cbd5e1",
+                                fontSize: "11.5px",
+                                fontWeight: isSelected ? 800 : 600,
+                                cursor: "pointer",
+                                textAlign: "left",
+                                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                                boxShadow: isSelected ? "0 4px 16px rgba(225, 48, 108, 0.3)" : "none",
+                                transform: isSelected ? "scale(1.02)" : "scale(1)",
+                              }}
+                            >
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                <strong>{item.label}</strong>
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  background: isSelected ? "var(--ig-sunset)" : "rgba(255,255,255,0.08)",
+                                  color: "#ffffff",
+                                  padding: "2px 6px",
+                                  borderRadius: "9999px",
+                                  fontWeight: 800,
+                                  flexShrink: 0,
+                                  marginLeft: "4px",
+                                }}
+                              >
+                                {isSelected ? "✓ Na tela" : `(${item.count})`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#94a3b8", background: "rgba(255,255,255,0.02)", padding: "6px 10px", borderRadius: "8px" }}>
+                        <span>💡</span>
+                        <span>
+                          Exibindo agora: <strong style={{ color: "#ffffff" }}>{getNiche(selectedNiche).name}</strong>. Deslize os slides no celular ao lado para ver todo o conteúdo.
+                        </span>
                       </div>
 
                       <button
@@ -2757,7 +2822,7 @@ export default function MagicCarouselsApp() {
                         className="btn-primary-ig"
                         style={{ width: "100%", padding: "12px", fontSize: "14px" }}
                       >
-                        ⚡ Abrir Criador e Escolher Meu Nicho
+                        ⚡ Criar Carrossel de {getNiche(selectedNiche).name}
                       </button>
                     </div>
                   </div>
