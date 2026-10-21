@@ -25,5 +25,12 @@ const config: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/precos", destination: "/#section-hero", permanent: false },
+      { source: "/recursos", destination: "/#section-recursos", permanent: false },
+      { source: "/ajuda", destination: "/#section-hero", permanent: false },
+    ];
+  },
 };
 export default config;

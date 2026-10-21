@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { database } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
+  await connection();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const hasSecretKey = Boolean(process.env.SUPABASE_SECRET_KEY);
   const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -11,6 +10,14 @@ export async function GET() {
   const hasMpWebhookSecret = Boolean(process.env.MERCADOPAGO_WEBHOOK_SECRET);
   const appUrl = process.env.APP_URL || "https://magiccarousels.vercel.app";
   const nodeEnv = process.env.NODE_ENV;
+
+  const tables: Record<string, string> = {
+    app_users: "não testado",
+    admin_account: "não testado",
+    brand_kits: "não testado",
+    leads: "não testado",
+    user_behavior_logs: "não testado",
+  };
 
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
@@ -23,13 +30,7 @@ export async function GET() {
       MERCADOPAGO_ACCESS_TOKEN: hasMpToken ? "CONFIGURADO (token ativo) ✅" : "NÃO CONFIGURADO ⚠️ (necessário p/ checkout)",
       MERCADOPAGO_WEBHOOK_SECRET: hasMpWebhookSecret ? "CONFIGURADO ✅" : "NÃO CONFIGURADO ⚠️ (necessário p/ webhook automático)",
     },
-    tables: {
-      app_users: "não testado",
-      admin_account: "não testado",
-      brand_kits: "não testado",
-      leads: "não testado",
-      user_behavior_logs: "não testado",
-    },
+    tables,
     connected: false,
     status: "pending",
   };
@@ -47,41 +48,41 @@ export async function GET() {
     // Test app_users
     const usersTest = await db.from("app_users").select("id").limit(1);
     if (usersTest.error) {
-      diagnostics.tables.app_users = `ERRO: ${usersTest.error.message} (Código: ${usersTest.error.code})`;
+      tables.app_users = `ERRO: ${usersTest.error.message} (Código: ${usersTest.error.code})`;
     } else {
-      diagnostics.tables.app_users = "OK ✅";
+      tables.app_users = "OK ✅";
     }
 
     // Test admin_account
     const adminTest = await db.from("admin_account").select("user_id").limit(1);
     if (adminTest.error) {
-      diagnostics.tables.admin_account = `ERRO: ${adminTest.error.message}`;
+      tables.admin_account = `ERRO: ${adminTest.error.message}`;
     } else {
-      diagnostics.tables.admin_account = "OK ✅";
+      tables.admin_account = "OK ✅";
     }
 
     // Test brand_kits
     const brandTest = await db.from("brand_kits").select("user_id").limit(1);
     if (brandTest.error) {
-      diagnostics.tables.brand_kits = `ERRO: ${brandTest.error.message}`;
+      tables.brand_kits = `ERRO: ${brandTest.error.message}`;
     } else {
-      diagnostics.tables.brand_kits = "OK ✅";
+      tables.brand_kits = "OK ✅";
     }
 
     // Test leads
     const leadsTest = await db.from("leads").select("id").limit(1);
     if (leadsTest.error) {
-      diagnostics.tables.leads = `ERRO: ${leadsTest.error.message}`;
+      tables.leads = `ERRO: ${leadsTest.error.message}`;
     } else {
-      diagnostics.tables.leads = "OK ✅";
+      tables.leads = "OK ✅";
     }
 
     // Test user_behavior_logs
     const logsTest = await db.from("user_behavior_logs").select("id").limit(1);
     if (logsTest.error) {
-      diagnostics.tables.user_behavior_logs = `ERRO: ${logsTest.error.message}`;
+      tables.user_behavior_logs = `ERRO: ${logsTest.error.message}`;
     } else {
-      diagnostics.tables.user_behavior_logs = "OK ✅";
+      tables.user_behavior_logs = "OK ✅";
     }
 
     diagnostics.connected = true;
