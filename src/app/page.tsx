@@ -4303,15 +4303,33 @@ export default function MagicCarouselsApp() {
       <footer
         style={{
           borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-          background: "rgba(10, 10, 14, 0.9)",
-          padding: "24px 20px",
+          background: "rgba(8, 8, 12, 0.95)",
+          padding: "32px 20px 80px 20px",
           textAlign: "center",
-          fontSize: "13px",
+          fontSize: "12.5px",
           color: "#94a3b8",
           marginTop: "auto",
+          lineHeight: 1.6,
         }}
       >
-        Magic Carousels © 2026 — Plataforma SaaS Híbrida (Celular & Computador). Pagamento Seguro via Mercado Pago & Stone (Pagar.me) • Supabase Cloud.
+        <div style={{ maxWidth: "820px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: 800, color: "#ffffff", fontSize: "13.5px" }}>
+            <img src="/favicon.png" alt="Magic Carousels Logo" style={{ width: "22px", height: "22px", objectFit: "contain" }} />
+            <span>Magic Carousels — Parte do Grupo SplinkApp (Desde 2019)</span>
+          </div>
+
+          <div style={{ color: "#cbd5e1", fontSize: "12px" }}>
+            CNPJ: <strong style={{ color: "#ffffff" }}>32.657.200/0001-08</strong> • Todos os direitos reservados.
+          </div>
+
+          <div style={{ color: "#64748b", fontSize: "11.5px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
+            <span>🔒 Pagamento Seguro via Mercado Pago & Stone</span>
+            <span>•</span>
+            <span>🛡️ Garantia de 7 Dias com Devolução Total</span>
+            <span>•</span>
+            <span>📩 suporte.splinkagencia@gmail.com</span>
+          </div>
+        </div>
       </footer>
     </div>
   );
