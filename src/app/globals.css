@@ -400,11 +400,95 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 
 /* Melhorias aditivas: manter a identidade, os textos e as seções originais. */
-.account-tools,.legal-links { display:flex; flex-wrap:wrap; align-items:center; gap:16px; padding:14px 0; }
-.account-tools { margin-bottom:16px; border-bottom:1px solid var(--border-dark); }
+.account-tools { display:flex; flex-wrap:wrap; align-items:center; gap:16px; padding:14px 0; margin-bottom:16px; border-bottom:1px solid var(--border-dark); }
 .account-tools button { background:var(--ig-sunset);border:0;border-radius:10px;color:white;padding:10px 16px;cursor:pointer; }
-.account-tools a,.legal-links a { color:#f9a8d4;text-decoration:underline;text-underline-offset:4px; }
-.legal-links { justify-content:center; }
+.account-tools a { color:#f9a8d4;text-decoration:none;font-weight:600; }
+.account-tools a:hover { text-decoration:underline; }
+
+/* Rodapé Premium do Magic Carousels (Design System Impeccable) */
+.site-premium-footer {
+  position: relative;
+  background: linear-gradient(180deg, #0d0d14 0%, #060609 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 64px 24px 36px 24px;
+  color: #94a3b8;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.site-premium-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  max-width: 800px;
+  height: 1px;
+  background: radial-gradient(ellipse at center, rgba(225, 48, 108, 0.4) 0%, rgba(131, 58, 180, 0.2) 60%, transparent 100%);
+}
+.footer-container {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr 1.1fr;
+  gap: 36px;
+  margin-bottom: 44px;
+}
+@media (max-width: 900px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
+@media (max-width: 580px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+.footer-col h4 {
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+.footer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footer-col a {
+  color: #94a3b8;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.footer-col a:hover {
+  color: #ffffff;
+  transform: translateX(2px);
+}
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: #64748b;
+}
+
 .account-tools [role=status] { font-size:13px;color:#cbd5e1; }
 :focus-visible { outline:3px solid #f9a8d4;outline-offset:4px; }
 .skip-link { position:fixed;left:16px;top:-100px;z-index:10000;padding:12px;background:#fff;color:#111; }

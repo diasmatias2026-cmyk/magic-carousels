@@ -4374,44 +4374,92 @@ export default function MagicCarouselsApp() {
         <span>Canal WhatsApp</span>
       </a>
 
-      <footer
-        style={{
-          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-          background: "rgba(8, 8, 12, 0.95)",
-          padding: "32px 20px 80px 20px",
-          textAlign: "center",
-          fontSize: "12.5px",
-          color: "#94a3b8",
-          marginTop: "auto",
-          lineHeight: 1.6,
-        }}
-      >
-        <div style={{ maxWidth: "820px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "8px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontWeight: 800, color: "#ffffff", fontSize: "13.5px" }}>
-            <img src="/favicon.png" alt="Magic Carousels Logo" style={{ width: "22px", height: "22px", objectFit: "contain" }} />
-            <span>Magic Carousels — Parte do Grupo SplinkApp (Desde 2019)</span>
+      <footer className="site-premium-footer">
+        <div className="footer-container">
+          <div className="footer-grid">
+            {/* Coluna 1: Marca & Confiança */}
+            <div className="footer-col" style={{ maxWidth: "340px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                <img src="/favicon.png" alt="Magic Carousels Logo" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
+                <span style={{ fontSize: "17px", fontWeight: 900, color: "#ffffff", letterSpacing: "-0.5px" }}>
+                  Magic<span style={{ color: "#f472b6" }}>Carousels</span>
+                </span>
+                <span style={{ fontSize: "10px", fontWeight: 800, background: "rgba(225,48,108,0.15)", color: "#f472b6", border: "1px solid rgba(225,48,108,0.3)", padding: "2px 6px", borderRadius: "6px" }}>PRO</span>
+              </div>
+              <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.6, margin: "0 0 18px 0" }}>
+                Crie carrosséis de alta conversão para Instagram e LinkedIn em menos de 60 segundos. Mais de 120 templates nichados com navegação idêntica ao feed.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "5px 10px", borderRadius: "8px", fontSize: "11px", color: "#cbd5e1" }}>
+                  🔒 Mercado Pago
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", padding: "5px 10px", borderRadius: "8px", fontSize: "11px", color: "#86efac" }}>
+                  🛡️ 7 Dias de Garantia
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "5px 10px", borderRadius: "8px", fontSize: "11px", color: "#cbd5e1" }}>
+                  🇧🇷 100% Brasileiro
+                </span>
+              </div>
+            </div>
+
+            {/* Coluna 2: Produto */}
+            <div className="footer-col">
+              <h4>Produto</h4>
+              <ul>
+                <li><button type="button" onClick={() => setActiveTab("creator")} style={{ background: "none", border: "none", color: "inherit", padding: 0, font: "inherit", cursor: "pointer", textAlign: "left" }}>⚡ Criador de Carrossel</button></li>
+                <li><button type="button" onClick={() => setActiveTab("templates")} style={{ background: "none", border: "none", color: "inherit", padding: 0, font: "inherit", cursor: "pointer", textAlign: "left" }}>🎨 120+ Templates por Nicho</button></li>
+                <li><button type="button" onClick={() => setActiveTab("canva-studio")} style={{ background: "none", border: "none", color: "inherit", padding: 0, font: "inherit", cursor: "pointer", textAlign: "left" }}>🛠️ Canva Studio Pro</button></li>
+                <li><button type="button" onClick={() => setActiveTab("checkout")} style={{ background: "none", border: "none", color: "inherit", padding: 0, font: "inherit", cursor: "pointer", textAlign: "left" }}>💎 Oferta Lote Fundador</button></li>
+              </ul>
+            </div>
+
+            {/* Coluna 3: Comunidade & Suporte */}
+            <div className="footer-col">
+              <h4>Comunidade</h4>
+              <ul>
+                <li>
+                  <a
+                    href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleRecordWhatsappClick("footer_link")}
+                    style={{ color: "#25D366", fontWeight: 700 }}
+                  >
+                    📲 Canal VIP no WhatsApp
+                  </a>
+                </li>
+                <li><Link href="/ajuda">❓ Central de Ajuda & FAQ</Link></li>
+                <li><Link href="/contato">💬 Fale Conosco</Link></li>
+                <li><a href="mailto:comercial@splinkapp.com.br">✉️ comercial@splinkapp.com.br</a></li>
+              </ul>
+            </div>
+
+            {/* Coluna 4: Institucional & Legal */}
+            <div className="footer-col">
+              <h4>Institucional</h4>
+              <ul>
+                <li><Link href="/sobre">🏢 Sobre o Grupo SplinkApp</Link></li>
+                <li><Link href="/termos">📄 Termos de Uso</Link></li>
+                <li><Link href="/privacidade">🛡️ Política de Privacidade</Link></li>
+                <li style={{ fontSize: "11px", color: "#64748b", marginTop: "6px", lineHeight: 1.5 }}>
+                  CNPJ: 32.657.200/0001-08<br />
+                  Parte do Grupo SplinkApp · Desde 2019
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <div style={{ color: "#cbd5e1", fontSize: "12px" }}>
-            CNPJ: <strong style={{ color: "#ffffff" }}>32.657.200/0001-08</strong> • Todos os direitos reservados.
-          </div>
-
-          <div style={{ color: "#64748b", fontSize: "11.5px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
-            <span>🔒 Pagamento Seguro via Mercado Pago</span>
-            <span>•</span>
-            <span>🛡️ Garantia de 7 Dias com Devolução Total</span>
-            <span>•</span>
-            <span>📩 comercial@splinkapp.com.br</span>
+          {/* Barra Inferior com Copyright e Status */}
+          <div className="footer-bottom">
+            <div>
+              © 2026 Magic Carousels — Parte do Grupo SplinkApp. Todos os direitos reservados.
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 8px #22c55e" }} />
+              <span style={{ color: "#94a3b8" }}>Sistemas 100% Operacionais</span>
+            </div>
           </div>
         </div>
-        <nav aria-label="Informações da empresa" className="legal-links">
-          <Link href="/sobre">Sobre</Link>
-          <Link href="/contato">Contato</Link>
-          <a href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H" target="_blank" rel="noopener noreferrer" style={{ color: "#25D366", fontWeight: 700 }}>Canal WhatsApp</a>
-          <Link href="/privacidade">Política de Privacidade</Link>
-          <Link href="/termos">Termos de Uso</Link>
-          <Link href="/ajuda">Ajuda</Link>
-        </nav>
       </footer>
     </div>
   );
