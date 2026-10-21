@@ -33,6 +33,7 @@ export function Footer() {
       <nav aria-label="Institucional">
         <Link href="/sobre">Sobre</Link>
         <Link href="/contato">Contato</Link>
+        <a href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H" target="_blank" rel="noopener noreferrer" style={{ color: "#25D366" }}>Canal WhatsApp</a>
         <Link href="/privacidade">Privacidade</Link>
         <Link href="/termos">Termos de Uso</Link>
       </nav>

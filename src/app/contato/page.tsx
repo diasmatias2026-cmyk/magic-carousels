@@ -23,6 +23,17 @@ export default function Page() {
         acesso ou dados completos do cartão.
       </p>
       <p>
+        📲 <strong>Canal Oficial no WhatsApp:</strong>{" "}
+        <a
+          href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#25D366", fontWeight: 700 }}
+        >
+          Acessar Canal Magic Carousels no WhatsApp
+        </a>
+      </p>
+      <p>
         Magic Carousels · Grupo SplinkApp
         <br />
         CNPJ 32.657.200/0001-08

@@ -82,7 +82,7 @@ export default function MagicCarouselsApp() {
   const [leadPhone, setLeadPhone] = useState("");
   const [leadLoading, setLeadLoading] = useState(false);
   const [leadError, setLeadError] = useState("");
-  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("");
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H");
 
   // Cronômetro Regressivo de Escassez (Oferta de Lançamento)
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
@@ -355,17 +355,19 @@ export default function MagicCarouselsApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: leadName, email: leadEmail, phone: leadPhone, source: "popup_comunidade" }),
       });
-      const data = await res.json();
-      if (data.success) {
-        if (data.whatsappUrl) setWhatsappGroupUrl(data.whatsappUrl);
-        setLeadStep("success");
-        localStorage.setItem("mc_lead_joined", "true");
+      const data = await res.json().catch(() => ({}));
+      if (data.whatsappUrl) {
+        setWhatsappGroupUrl(data.whatsappUrl);
       } else {
-        setLeadError(data.error || "Erro ao salvar. Tente novamente.");
+        setWhatsappGroupUrl("https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H");
       }
+      setLeadStep("success");
+      localStorage.setItem("mc_lead_joined", "true");
     } catch (err) {
       console.error(err);
-      setLeadError("Não foi possível enviar. Tente novamente mais tarde.");
+      setWhatsappGroupUrl("https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H");
+      setLeadStep("success");
+      localStorage.setItem("mc_lead_joined", "true");
     } finally {
       setLeadLoading(false);
     }
@@ -1643,14 +1645,14 @@ export default function MagicCarouselsApp() {
                 </div>
 
                 <h3 style={{ fontSize: "24px", fontWeight: 900, color: "#ffffff", marginBottom: "8px" }}>
-                  🎉 Cadastro Confirmado!
+                  🎉 Acesso Liberado!
                 </h3>
                 <p style={{ color: "#94a3b8", fontSize: "13.5px", lineHeight: 1.5, marginBottom: "24px" }}>
-                  Agora é só clicar no botão abaixo para ingressar no <strong>Grupo VIP no WhatsApp</strong> e trocar ideias com criadores e agências do seu nicho:
+                  Agora é só clicar no botão abaixo para ingressar no <strong>Canal VIP no WhatsApp</strong> e receber prompts virais e novidades em primeira mão:
                 </p>
 
                 <a
-                  href={whatsappGroupUrl}
+                  href={whatsappGroupUrl || "https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H"}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -1669,11 +1671,11 @@ export default function MagicCarouselsApp() {
                     marginBottom: "14px",
                   }}
                 >
-                  <span>Abrir Grupo VIP no WhatsApp 🚀</span>
+                  <span>Abrir Canal VIP no WhatsApp 🚀</span>
                 </a>
 
                 <p style={{ fontSize: "11px", color: "#64748b", marginBottom: "18px" }}>
-                  (O link oficial da comunidade pode ser atualizado pelo administrador a qualquer momento)
+                  (Canal oficial: novidades, templates da semana e dicas exclusivas)
                 </p>
 
                 <button
@@ -4241,6 +4243,34 @@ export default function MagicCarouselsApp() {
         </div>
       )}
 
+      {/* BOTÃO FLUTUANTE DE ACESSO AO CANAL DO WHATSAPP */}
+      <a
+        href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          zIndex: 999,
+          background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
+          color: "#ffffff",
+          padding: "10px 18px",
+          borderRadius: "9999px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontWeight: 800,
+          fontSize: "13px",
+          textDecoration: "none",
+          boxShadow: "0 10px 25px rgba(37, 211, 102, 0.35)",
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+        }}
+      >
+        <span style={{ fontSize: "17px" }}>📲</span>
+        <span>Canal WhatsApp</span>
+      </a>
+
       <footer
         style={{
           borderTop: "1px solid rgba(255, 255, 255, 0.08)",
@@ -4271,7 +4301,14 @@ export default function MagicCarouselsApp() {
             <span>📩 comercial@splinkapp.com.br</span>
           </div>
         </div>
-        <nav aria-label="Informações da empresa" className="legal-links"><Link href="/sobre">Sobre</Link><Link href="/contato">Contato</Link><Link href="/privacidade">Política de Privacidade</Link><Link href="/termos">Termos de Uso</Link><Link href="/ajuda">Ajuda</Link></nav>
+        <nav aria-label="Informações da empresa" className="legal-links">
+          <Link href="/sobre">Sobre</Link>
+          <Link href="/contato">Contato</Link>
+          <a href="https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H" target="_blank" rel="noopener noreferrer" style={{ color: "#25D366", fontWeight: 700 }}>Canal WhatsApp</a>
+          <Link href="/privacidade">Política de Privacidade</Link>
+          <Link href="/termos">Termos de Uso</Link>
+          <Link href="/ajuda">Ajuda</Link>
+        </nav>
       </footer>
     </div>
   );
