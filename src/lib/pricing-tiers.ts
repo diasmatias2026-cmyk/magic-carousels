@@ -72,14 +72,4 @@ export function getTierForUserCount(dbUserCount: number): TierInfo {
   }
 }
 
-// Provas sociais ao vivo rotativas (Criadores reais por nicho)
-export const LIVE_SOCIAL_PROOF = [
-  { name: "Dr. Rafael M.", role: "Médico Cardiologista", city: "São Paulo, SP", action: "gerou carrossel clínico em 40s", time: "há 2 minutos", avatar: "👨‍⚕️" },
-  { name: "Mariana Costa", role: "Estrategista de Marketing", city: "Rio de Janeiro, RJ", action: "ativou o Plano Vitalício (Lote 1)", time: "há 3 minutos", avatar: "👩‍💼" },
-  { name: "Lucas Faria", role: "Advogado Empresarial", city: "Belo Horizonte, MG", action: "exportou PDF de alta conversão p/ LinkedIn", time: "há 6 minutos", avatar: "⚖️" },
-  { name: "Dra. Camila Toledo", role: "Odontologia Estética", city: "Curitiba, PR", action: "baixou 8 lâminas em alta definição", time: "há 8 minutos", avatar: "🦷" },
-  { name: "Rodrigo Pires", role: "Nutricionista Esportivo", city: "Porto Alegre, RS", action: "copiou legenda magnética + 12 hashtags", time: "há 11 minutos", avatar: "🥗" },
-  { name: "Fernanda Silveira", role: "Biomédica Esteta", city: "Florianópolis, SC", action: "gerou 1º carrossel gratuito pelo celular", time: "há 14 minutos", avatar: "✨" },
-  { name: "Eduardo Brandão", role: "Consultor B2B & Vendas", city: "Brasília, DF", action: "criou carrossel corporativo no Studio", time: "há 18 minutos", avatar: "💼" },
-  { name: "Patrícia Nogueira", role: "Personal Trainer", city: "Salvador, BA", action: "ativou o Vitalício por R$ 47,90", time: "há 22 minutos", avatar: "💪" },
-];
+export { LIVE_SOCIAL_PROOF, type SocialProofNotification } from "@/data/live-social-proof";

@@ -1,0 +1,225 @@
+export interface SocialProofNotification {
+  name: string;
+  role: string;
+  city: string;
+  action: string;
+  time: string;
+  avatar: string;
+}
+
+export const LIVE_SOCIAL_PROOF: SocialProofNotification[] = [
+  // --- IMOBILIÁRIO & CORRETORES ---
+  { name: "Guilherme Sampaio", role: "Corretor de Alto Padrão", city: "Balneário Camboriú, SC", action: "ativou o Plano Vitalício por R$ 47,90", time: "há 2 minutos", avatar: "🏢" },
+  { name: "Luciana Meireles", role: "Perita Avaliadora de Imóveis", city: "São Paulo, SP", action: "gerou carrossel de 7 lâminas em 35s", time: "há 4 minutos", avatar: "🔑" },
+  { name: "Marcelo Albuquerque", role: "Gestor de Lançamentos Imobiliários", city: "Goiânia, GO", action: "exportou PDF em alta definição para cliente", time: "há 7 minutos", avatar: "🏡" },
+  { name: "Renata Fagundes", role: "Corretora de Imóveis na Praia", city: "Florianópolis, SC", action: "copiou legenda magnética com hashtags", time: "há 9 minutos", avatar: "🌊" },
+  { name: "Fábio Dantas", role: "Investidor & Consultor Imobiliário", city: "Ribeirão Preto, SP", action: "ativou o Vitalício antes do aumento", time: "há 12 minutos", avatar: "📈" },
+  { name: "Débora Naves", role: "Arquiteta & Corretora", city: "Campinas, SP", action: "criou carrossel no template imob-luxury", time: "há 16 minutos", avatar: "🏢" },
+  { name: "Thiago Brandão", role: "Diretor de Imobiliária", city: "Curitiba, PR", action: "ativou o Plano Vitalício no PIX", time: "há 19 minutos", avatar: "🤝" },
+  { name: "Cláudia Rezende", role: "Especialista em Condomínios Fechados", city: "Belo Horizonte, MG", action: "gerou carrossel pelo celular em 40s", time: "há 23 minutos", avatar: "🗝️" },
+  { name: "Alexandre Gusmão", role: "Corretor de Imóveis Comerciais", city: "Rio de Janeiro, RJ", action: "baixou 8 lâminas em alta definição", time: "há 27 minutos", avatar: "🏙️" },
+  { name: "Priscila Vianna", role: "Consultora Imobiliária Internacional", city: "Santos, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 32 minutos", avatar: "✈️" },
+  { name: "Bruno Castanho", role: "Corretor de Imóveis Rurais & Fazendas", city: "Uberlândia, MG", action: "entrou no Canal VIP do WhatsApp", time: "há 36 minutos", avatar: "🌾" },
+  { name: "Vanessa Esteves", role: "Especialista em Primeiro Imóvel", city: "Porto Alegre, RS", action: "gerou 1º carrossel gratuito pelo celular", time: "há 41 minutos", avatar: "🏠" },
+
+  // --- FÉ & ESPIRITUALIDADE (RELIGIÃO) ---
+  { name: "Pastor André Valente", role: "Pastor & Escritor", city: "Belo Horizonte, MG", action: "gerou devocional semanal em 7 slides", time: "há 1 minuto", avatar: "✝️" },
+  { name: "Sara Mendonça", role: "Mentora Bíblica para Mulheres", city: "Brasília, DF", action: "ativou o Plano Vitalício por R$ 47,90", time: "há 3 minutos", avatar: "📖" },
+  { name: "Pr. Marcos Cavalcanti", role: "Líder de Jovens & Pregador", city: "Recife, PE", action: "criou carrossel no template Fé Sagrada", time: "há 6 minutos", avatar: "🙏" },
+  { name: "Larissa Dorneles", role: "Criadora de Conteúdo Cristão", city: "Joinville, SC", action: "copiou legenda com versículos e hashtags", time: "há 8 minutos", avatar: "✨" },
+  { name: "Rodrigo Alencar", role: "Ministro de Louvor", city: "Salvador, BA", action: "exportou carrossel de reflexão em PDF", time: "há 11 minutos", avatar: "🎵" },
+  { name: "Missionária Ester Rocha", role: "Missões & Família", city: "Manaus, AM", action: "ativou o Vitalício no PIX", time: "há 15 minutos", avatar: "🕊️" },
+  { name: "Daniel Cordeiro", role: "Educador Cristão & Teólogo", city: "São Paulo, SP", action: "gerou 9 lâminas de estudo bíblico", time: "há 20 minutos", avatar: "📚" },
+  { name: "Talita Antunes", role: "Mentora de Casais Cristãos", city: "Curitiba, PR", action: "entrou no Canal VIP do WhatsApp", time: "há 25 minutos", avatar: "💍" },
+  { name: "Pr. Samuel Vieira", role: "Igreja Local & Discipulado", city: "Vitória, ES", action: "ativou o Plano Vitalício (Lote 1)", time: "há 29 minutos", avatar: "⛪" },
+  { name: "Ana Beatriz Sales", role: "Intercessão & Oração", city: "Fortaleza, CE", action: "baixou carrossel pelo celular em 30s", time: "há 34 minutos", avatar: "🙏" },
+  { name: "Felipe Benevides", role: "Podcast de Fé & Propósito", city: "Campinas, SP", action: "criou carrossel de cortes de mensagem", time: "há 38 minutos", avatar: "🎙️" },
+  { name: "Marta Guimarães", role: "Capelã & Orientadora Espiritual", city: "Cuiabá, MT", action: "ativou o Vitalício por R$ 47,90", time: "há 44 minutos", avatar: "🕊️" },
+
+  // --- AUTOESTIMA & AUTOCUIDADO ---
+  { name: "Dra. Juliana Prado", role: "Psicóloga de Autoestima Feminina", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 2 minutos", avatar: "💖" },
+  { name: "Camila Bittencourt", role: "Terapeuta & Coach de Amor-Próprio", city: "Rio de Janeiro, RJ", action: "gerou carrossel com template Rose Love", time: "há 5 minutos", avatar: "🌸" },
+  { name: "Beatriz Vasconcelos", role: "Especialista em Inteligência Emocional", city: "Belo Horizonte, MG", action: "copiou legenda reflexiva com chamada", time: "há 7 minutos", avatar: "🧠" },
+  { name: "Sabrina Fontes", role: "Mentora de Mulheres Seguras", city: "Porto Alegre, RS", action: "baixou 8 slides prontos para postar", time: "há 10 minutos", avatar: "👑" },
+  { name: "Helena Moreira", role: "Psicanalista & Autocuidado", city: "Curitiba, PR", action: "ativou o Vitalício no PIX com desconto", time: "há 14 minutos", avatar: "☕" },
+  { name: "Letícia Miranda", role: "Criadora de Hábitos & Rotina Saudável", city: "Florianópolis, SC", action: "gerou carrossel de autocuidado matinal", time: "há 18 minutos", avatar: "🌿" },
+  { name: "Tatiane Duarte", role: "Consultora de Imagem & Postura", city: "Brasília, DF", action: "personalizou cores no Canva Studio", time: "há 22 minutos", avatar: "💄" },
+  { name: "Natália Peixoto", role: "Terapeuta Floral & Bem-Estar", city: "Salvador, BA", action: "entrou no Canal VIP do WhatsApp", time: "há 26 minutos", avatar: "🌺" },
+  { name: "Carolina Medeiros", role: "Coach de Carreira & Confiança", city: "Campinas, SP", action: "ativou o Plano Vitalício (Lote 1)", time: "há 31 minutos", avatar: "👠" },
+  { name: "Monique Fagundes", role: "Facilitadora de Círculos Femininos", city: "Niterói, RJ", action: "gerou 1º carrossel pelo celular em 45s", time: "há 37 minutos", avatar: "✨" },
+  { name: "Aline Barreto", role: "Mentora de Posicionamento Pessoal", city: "Goiânia, GO", action: "baixou PDF em alta resolução", time: "há 42 minutos", avatar: "💫" },
+
+  // --- MEDICINA & SAÚDE ---
+  { name: "Dr. Rafael Medeiros", role: "Médico Cardiologista", city: "São Paulo, SP", action: "gerou carrossel clínico em 40s", time: "há 1 minuto", avatar: "👨‍⚕️" },
+  { name: "Dra. Lívia Castilho", role: "Pediatra & Neonatologista", city: "Belo Horizonte, MG", action: "ativou o Plano Vitalício por R$ 47,90", time: "há 4 minutos", avatar: "👩‍⚕️" },
+  { name: "Dr. Gustavo Henrique", role: "Ortopedista & Traumatologista", city: "Ribeirão Preto, SP", action: "criou carrossel de postura no trabalho", time: "há 6 minutos", avatar: "🦴" },
+  { name: "Dra. Bianca Toledo", role: "Dermatologista Clínica", city: "Curitiba, PR", action: "baixou 8 lâminas sobre cuidados com a pele", time: "há 9 minutos", avatar: "🧴" },
+  { name: "Dr. Fernando Paiva", role: "Oftalmologista Cirurgião", city: "Porto Alegre, RS", action: "ativou o Vitalício no PIX", time: "há 13 minutos", avatar: "👁️" },
+  { name: "Dra. Carolina Brant", role: "Ginecologista & Obstetra", city: "Rio de Janeiro, RJ", action: "copiou legenda educativa para o feed", time: "há 17 minutos", avatar: "🌸" },
+  { name: "Dr. Marcelo Fagundes", role: "Neurologista & Especialista em Sono", city: "Brasília, DF", action: "gerou carrossel sobre insônia em 38s", time: "há 21 minutos", avatar: "🧠" },
+  { name: "Dra. Renata Zaidan", role: "Endocrinologista & Metabologia", city: "Florianópolis, SC", action: "ativou o Vitalício antes do Lote 2", time: "há 26 minutos", avatar: "🩸" },
+  { name: "Dr. André Lourenço", role: "Cirurgião Plástico", city: "Goiânia, GO", action: "exportou carrossel com fotos de antes e depois", time: "há 30 minutos", avatar: "👨‍⚕️" },
+  { name: "Dra. Thaís Vasconcelos", role: "Psiquiatra da Infância e Família", city: "Salvador, BA", action: "entrou no Canal VIP do WhatsApp", time: "há 35 minutos", avatar: "🌿" },
+  { name: "Dr. Roberto Guimarães", role: "Urologista & Saúde do Homem", city: "Campinas, SP", action: "gerou 7 lâminas educativas em segundos", time: "há 39 minutos", avatar: "🩺" },
+  { name: "Dra. Monique Arantes", role: "Otorrinolaringologista", city: "Recife, PE", action: "ativou o Vitalício por R$ 47,90", time: "há 45 minutos", avatar: "👂" },
+
+  // --- MARKETING, TRÁFEGO & VENDAS ---
+  { name: "Mariana Costa", role: "Estrategista de Lançamentos", city: "Rio de Janeiro, RJ", action: "ativou o Plano Vitalício (Lote 1)", time: "há 2 minutos", avatar: "👩‍💼" },
+  { name: "Leandro Vianna", role: "Gestor de Tráfego Pago", city: "São Paulo, SP", action: "gerou 5 carrosséis para clientes hoje", time: "há 4 minutos", avatar: "🚀" },
+  { name: "Jéssica Dornelas", role: "Copywriter de Alta Conversão", city: "Curitiba, PR", action: "copiou gancho viral com legenda magnética", time: "há 7 minutos", avatar: "✍️" },
+  { name: "Felipe Nogueira", role: "Social Media para Especialistas", city: "Florianópolis, SC", action: "ativou o Vitalício por R$ 47,90", time: "há 10 minutos", avatar: "📱" },
+  { name: "Rodrigo Bataglia", role: "Consultor de Vendas B2B", city: "Belo Horizonte, MG", action: "exportou PDF pronto para o LinkedIn", time: "há 14 minutos", avatar: "💼" },
+  { name: "Aline Ramalho", role: "Agência de Marketing Digital", city: "Porto Alegre, RS", action: "ativou conta para equipe no Vitalício", time: "há 18 minutos", avatar: "🔥" },
+  { name: "Lucas Fontenele", role: "Growth Hacker para Startups", city: "Campinas, SP", action: "gerou carrossel de métricas SaaS em 29s", time: "há 22 minutos", avatar: "📊" },
+  { name: "Bárbara Silveira", role: "Especialista em Reels & Carrosséis", city: "Brasília, DF", action: "entrou no Canal VIP do WhatsApp", time: "há 27 minutos", avatar: "🎬" },
+  { name: "Caio Figueiredo", role: "Infoprodutor no Nicho de Finanças", city: "Goiânia, GO", action: "ativou o Vitalício antes do aumento", time: "há 31 minutos", avatar: "💰" },
+  { name: "Priscila Alencar", role: "Mentora de Negócios Digitais", city: "Salvador, BA", action: "gerou carrossel no celular em 45s", time: "há 36 minutos", avatar: "⚡" },
+  { name: "Gabriel Siqueira", role: "Especialista em Funis de Vendas", city: "Santos, SP", action: "baixou 10 lâminas de alta conversão", time: "há 40 minutos", avatar: "🎯" },
+  { name: "Juliana Telles", role: "Branding & Posicionamento", city: "Vitória, ES", action: "personalizou template com sua paleta", time: "há 46 minutos", avatar: "🎨" },
+
+  // --- DIREITO & ADVOCACIA ---
+  { name: "Lucas Faria", role: "Advogado Empresarial", city: "Belo Horizonte, MG", action: "exportou PDF de alta conversão p/ LinkedIn", time: "há 2 minutos", avatar: "⚖️" },
+  { name: "Dra. Patrícia Drummond", role: "Advogada de Família & Sucessões", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 5 minutos", avatar: "📜" },
+  { name: "Dr. Thiago Mendonça", role: "Advogado Trabalhista para Empresas", city: "Rio de Janeiro, RJ", action: "gerou carrossel sobre CLT em 35s", time: "há 8 minutos", avatar: "👔" },
+  { name: "Dra. Renata Vasques", role: "Especialista em Direito Previdenciário", city: "Curitiba, PR", action: "copiou legenda clara sem juridiquês", time: "há 12 minutos", avatar: "📑" },
+  { name: "Dr. Vinícius Paiva", role: "Advogado Tributarista", city: "Brasília, DF", action: "ativou o Plano Vitalício (Lote 1)", time: "há 16 minutos", avatar: "🏛️" },
+  { name: "Dra. Camila Nogueira", role: "Direito Digital & LGPD", city: "Porto Alegre, RS", action: "gerou 7 slides educativos em segundos", time: "há 21 minutos", avatar: "💻" },
+  { name: "Dr. Arthur Albuquerque", role: "Advogado Criminalista", city: "Salvador, BA", action: "baixou carrossel com design sóbrio", time: "há 26 minutos", avatar: "⚖️" },
+  { name: "Dra. Fabiana Toledo", role: "Direito Imobiliário & Regularização", city: "Goiânia, GO", action: "ativou o Vitalício no PIX", time: "há 30 minutos", avatar: "🏢" },
+  { name: "Dr. Eduardo Peixoto", role: "Direito Médico & Hospitalar", city: "Ribeirão Preto, SP", action: "entrou no Canal VIP do WhatsApp", time: "há 35 minutos", avatar: "🩺" },
+  { name: "Dra. Luísa Guimarães", role: "Advogada do Consumidor", city: "Fortaleza, CE", action: "gerou 1º carrossel gratuito pelo celular", time: "há 41 minutos", avatar: "🛡️" },
+  { name: "Dr. Rodrigo Salgado", role: "Recuperação Judicial & Falências", city: "Campinas, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 47 minutos", avatar: "📊" },
+
+  // --- NUTRIÇÃO & DIETA ---
+  { name: "Rodrigo Pires", role: "Nutricionista Esportivo", city: "Porto Alegre, RS", action: "copiou legenda magnética + 12 hashtags", time: "há 3 minutos", avatar: "🥗" },
+  { name: "Dra. Mariana Guedes", role: "Nutricionista Funcional & Integrativa", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 6 minutos", avatar: "🥑" },
+  { name: "Lucas Albuquerque", role: "Nutricionista Focado em Emagrecimento", city: "Belo Horizonte, MG", action: "gerou carrossel com tema Low Carb", time: "há 9 minutos", avatar: "🥩" },
+  { name: "Camila Vianna", role: "Nutricionista Materno-Infantil", city: "Rio de Janeiro, RJ", action: "baixou 8 slides fofos e educativos", time: "há 13 minutos", avatar: "🍼" },
+  { name: "Felipe Castanheiro", role: "Nutricionista Clínico & Longevidade", city: "Curitiba, PR", action: "ativou o Vitalício no PIX", time: "há 17 minutos", avatar: "🧬" },
+  { name: "Amanda Dorneles", role: "Nutricionista de Comportamento Alimentar", city: "Florianópolis, SC", action: "gerou carrossel de quebra de mitos", time: "há 22 minutos", avatar: "🍓" },
+  { name: "Bruna Peixoto", role: "Especialista em Nutrição Vegetariana", city: "Brasília, DF", action: "entrou no Canal VIP do WhatsApp", time: "há 27 minutos", avatar: "🌱" },
+  { name: "Diego Sampaio", role: "Nutricionista de Atletas de Elite", city: "Campinas, SP", action: "ativou o Plano Vitalício (Lote 1)", time: "há 32 minutos", avatar: "⚡" },
+  { name: "Paula Rezende", role: "Nutrição e Saúde da Mulher", city: "Salvador, BA", action: "exportou carrossel direto para o Instagram", time: "há 38 minutos", avatar: "🍊" },
+  { name: "Renato Silveira", role: "Nutricionista e Consultor de Suplementação", city: "Goiânia, GO", action: "ativou o Vitalício por R$ 47,90", time: "há 43 minutos", avatar: "💪" },
+
+  // --- FITNESS, MUSCULAÇÃO & TREINO ---
+  { name: "Patrícia Nogueira", role: "Personal Trainer & Consultora", city: "Salvador, BA", action: "ativou o Vitalício por R$ 47,90", time: "há 2 minutos", avatar: "💪" },
+  { name: "Bruno Ferraz", role: "Treinador de Hipertrofia & Força", city: "São Paulo, SP", action: "gerou carrossel de técnica de agachamento", time: "há 5 minutos", avatar: "🏋️‍♂️" },
+  { name: "Karina Bittencourt", role: "Instrutora de Pilates & Reabilitação", city: "Curitiba, PR", action: "baixou 7 lâminas com dicas de postura", time: "há 8 minutos", avatar: "🧘‍♀️" },
+  { name: "Thiago Medeiros", role: "Head Coach de Crossfit", city: "Rio de Janeiro, RJ", action: "ativou o Vitalício no PIX", time: "há 12 minutos", avatar: "🔥" },
+  { name: "Rafaela Salgado", role: "Personal para Mulheres Iniciantes", city: "Belo Horizonte, MG", action: "copiou legenda motivacional com CTA", time: "há 16 minutos", avatar: "👟" },
+  { name: "Matheus Antunes", role: "Fisiologista do Exercício", city: "Porto Alegre, RS", action: "ativou o Plano Vitalício (Lote 1)", time: "há 20 minutos", avatar: "⏱️" },
+  { name: "Débora Zaidan", role: "Treinadora de Corrida de Rua", city: "Brasília, DF", action: "gerou carrossel de dicas de respiração", time: "há 25 minutos", avatar: "🏃‍♀️" },
+  { name: "Leandro Prado", role: "Personal de Emagrecimento Acelerado", city: "Campinas, SP", action: "entrou no Canal VIP do WhatsApp", time: "há 30 minutos", avatar: "⚡" },
+  { name: "Monique Vasques", role: "Instrutora de Yoga & Mobilidade", city: "Florianópolis, SC", action: "ativou o Vitalício por R$ 47,90", time: "há 35 minutos", avatar: "🌸" },
+  { name: "Lucas Toledo", role: "Coach de Treinamento Funcional", city: "Goiânia, GO", action: "baixou 8 lâminas em alta definição", time: "há 41 minutos", avatar: "🎯" },
+
+  // --- ODONTOLOGIA & HARMONIZAÇÃO ---
+  { name: "Dra. Camila Toledo", role: "Odontologia Estética & Lentes", city: "Curitiba, PR", action: "baixou 8 lâminas em alta definição", time: "há 3 minutos", avatar: "🦷" },
+  { name: "Dr. André Villas", role: "Ortodontista & Alinhadores Invisíveis", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 6 minutos", avatar: "✨" },
+  { name: "Dra. Lorena Siqueira", role: "Harmonização Orofacial", city: "Belo Horizonte, MG", action: "gerou carrossel de preenchimento labial", time: "há 9 minutos", avatar: "💉" },
+  { name: "Dr. Felipe Gusmão", role: "Implantodontista & Reabilitação Oral", city: "Rio de Janeiro, RJ", action: "ativou o Plano Vitalício no PIX", time: "há 14 minutos", avatar: "👨‍⚕️" },
+  { name: "Dra. Mariana Fontoura", role: "Odontopediatra", city: "Porto Alegre, RS", action: "copiou legenda educativa para mães", time: "há 18 minutos", avatar: "🧸" },
+  { name: "Dr. Leonardo Brant", role: "Endodontista Clínico", city: "Brasília, DF", action: "ativou o Vitalício antes do aumento", time: "há 23 minutos", avatar: "🔍" },
+  { name: "Dra. Vanessa Meirelles", role: "Clínica Geral & Clareamento a Laser", city: "Salvador, BA", action: "gerou carrossel pelo celular em 32s", time: "há 28 minutos", avatar: "💎" },
+  { name: "Dr. Thiago Albuquerque", role: "Periodontista & Cirurgião Oral", city: "Campinas, SP", action: "entrou no Canal VIP do WhatsApp", time: "há 34 minutos", avatar: "🦷" },
+  { name: "Dra. Sabrina Esteves", role: "Harmonização Facial & Bioestimuladores", city: "Florianópolis, SC", action: "ativou o Vitalício por R$ 47,90", time: "há 39 minutos", avatar: "✨" },
+  { name: "Dr. Rafael Dantas", role: "Prótese Dentária & Reabilitação", city: "Ribeirão Preto, SP", action: "baixou PDF em alta resolução", time: "há 45 minutos", avatar: "📋" },
+
+  // --- ESTÉTICA, BELEZA & CÍLIOS ---
+  { name: "Fernanda Silveira", role: "Biomédica Esteta", city: "Florianópolis, SC", action: "gerou 1º carrossel gratuito pelo celular", time: "há 2 minutos", avatar: "✨" },
+  { name: "Jéssica Alcantara", role: "Lash Designer & Educadora", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 5 minutos", avatar: "👁️" },
+  { name: "Camila Nogueira", role: "Designer de Sobrancelhas & Micro", city: "Belo Horizonte, MG", action: "baixou 8 lâminas de cuidados pós-procedimento", time: "há 8 minutos", avatar: "🪄" },
+  { name: "Bruna Vasconcelos", role: "Esteticista & Cosmetóloga", city: "Rio de Janeiro, RJ", action: "copiou legenda com rotina de skincare", time: "há 12 minutos", avatar: "🧴" },
+  { name: "Priscila Fagundes", role: "Especialista em Harmonização Facial", city: "Curitiba, PR", action: "ativou o Vitalício no PIX com desconto", time: "há 16 minutos", avatar: "💎" },
+  { name: "Letícia Ramos", role: "Terapeuta Capilar & Tricologista", city: "Brasília, DF", action: "gerou carrossel sobre queda de cabelo", time: "há 21 minutos", avatar: "💇‍♀️" },
+  { name: "Carla Esteves", role: "Nail Designer & Instrutora", city: "Porto Alegre, RS", action: "ativou o Plano Vitalício (Lote 1)", time: "há 26 minutos", avatar: "💅" },
+  { name: "Aline Miranda", role: "Depilação a Laser & Cuidados", city: "Goiânia, GO", action: "entrou no Canal VIP do WhatsApp", time: "há 31 minutos", avatar: "⚡" },
+  { name: "Juliana Medeiros", role: "Maquiadora Profissional & Noivas", city: "Salvador, BA", action: "personalizou cores de marca no Studio", time: "há 36 minutos", avatar: "💄" },
+  { name: "Tatiane Rezende", role: "Especialista em Massoterapia & Drenagem", city: "Campinas, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 42 minutos", avatar: "🌿" },
+
+  // --- CONTABILIDADE, FINANÇAS & TRIBUTOS ---
+  { name: "Eduardo Brandão", role: "Consultor B2B & Tributário", city: "Brasília, DF", action: "criou carrossel corporativo no Studio", time: "há 3 minutos", avatar: "💼" },
+  { name: "Márcio Guimarães", role: "Contador Consultivo para Médicos", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 6 minutos", avatar: "📊" },
+  { name: "Renata Peixoto", role: "Planejadora Financeira CFP", city: "Curitiba, PR", action: "gerou carrossel de investimentos em 30s", time: "há 9 minutos", avatar: "📈" },
+  { name: "Carlos Henrique", role: "Especialista em Reforma Tributária", city: "Belo Horizonte, MG", action: "baixou PDF corporativo para clientes", time: "há 13 minutos", avatar: "⚖️" },
+  { name: "Vanessa Salgado", role: "Contadora para Infoprodutores & Afiliados", city: "Rio de Janeiro, RJ", action: "ativou o Vitalício no PIX", time: "há 17 minutos", avatar: "💻" },
+  { name: "Fábio Diniz", role: "Assessor de Investimentos & Previdência", city: "Porto Alegre, RS", action: "copiou legenda didática com hashtags", time: "há 22 minutos", avatar: "🏦" },
+  { name: "Débora Meireles", role: "Contabilidade Digital para PMEs", city: "Florianópolis, SC", action: "ativou o Plano Vitalício (Lote 1)", time: "há 27 minutos", avatar: "🚀" },
+  { name: "Alexandre Lourenço", role: "Perito Contábil & Auditor", city: "Goiânia, GO", action: "entrou no Canal VIP do WhatsApp", time: "há 33 minutos", avatar: "📑" },
+  { name: "Patrícia Toledo", role: "Consultora de Gestão de Fluxo de Caixa", city: "Campinas, SP", action: "gerou 7 lâminas explicativas pelo celular", time: "há 39 minutos", avatar: "💡" },
+  { name: "Rodrigo Sampaio", role: "Especialista em Holdig Familiar", city: "Ribeirão Preto, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 45 minutos", avatar: "🛡️" },
+
+  // --- ARQUITETURA, INTERIORES & ENGENHARIA ---
+  { name: "Mariana Albuquerque", role: "Arquiteta de Interiores", city: "São Paulo, SP", action: "gerou carrossel de tendências de iluminação", time: "há 2 minutos", avatar: "📐" },
+  { name: "Lucas Castilho", role: "Engenheiro Civil & Gerente de Obras", city: "Curitiba, PR", action: "ativou o Vitalício por R$ 47,90", time: "há 5 minutos", avatar: "🏗️" },
+  { name: "Camila Brant", role: "Designer de Interiores Residenciais", city: "Belo Horizonte, MG", action: "baixou 8 lâminas sofisticadas", time: "há 8 minutos", avatar: "🛋️" },
+  { name: "Felipe Naves", role: "Arquiteto Paisagista", city: "Rio de Janeiro, RJ", action: "copiou legenda inspiradora sobre plantas", time: "há 12 minutos", avatar: "🌿" },
+  { name: "Juliana Dorneles", role: "Arquiteta Comercial & Lojas", city: "Porto Alegre, RS", action: "ativou o Vitalício no PIX", time: "há 16 minutos", avatar: "🏬" },
+  { name: "Rodrigo Vasconcelos", role: "Especialista em Regularização de Imóveis", city: "Brasília, DF", action: "gerou carrossel técnico em 36s", time: "há 21 minutos", avatar: "📑" },
+  { name: "Beatriz Miranda", role: "Design de Móveis Planejados", city: "Florianópolis, SC", action: "ativou o Plano Vitalício (Lote 1)", time: "há 26 minutos", avatar: "🪵" },
+  { name: "Thiago Esteves", role: "Engenheiro Estrutural", city: "Goiânia, GO", action: "entrou no Canal VIP do WhatsApp", time: "há 31 minutos", avatar: "📏" },
+  { name: "Vanessa Dantas", role: "Arquitetura Sustentável & Bioclimática", city: "Campinas, SP", action: "gerou carrossel no celular em 40s", time: "há 37 minutos", avatar: "☀️" },
+  { name: "Gabriel Peixoto", role: "Visualização Arquitetônica 3D", city: "Salvador, BA", action: "ativou o Vitalício por R$ 47,90", time: "há 43 minutos", avatar: "🖥️" },
+
+  // --- PSICOLOGIA & TERAPIA ---
+  { name: "Dra. Tatiane Prado", role: "Psicóloga Clínica & TCC", city: "São Paulo, SP", action: "gerou carrossel sobre ansiedade em 34s", time: "há 3 minutos", avatar: "🧠" },
+  { name: "Marcelo Fagundes", role: "Terapeuta de Casais & Família", city: "Curitiba, PR", action: "ativou o Vitalício por R$ 47,90", time: "há 6 minutos", avatar: "💬" },
+  { name: "Larissa Silveira", role: "Psicóloga Especialista em Burnout", city: "Belo Horizonte, MG", action: "copiou legenda reflexiva para profissionais", time: "há 10 minutos", avatar: "☕" },
+  { name: "Renan Toledo", role: "Neuropsicólogo", city: "Porto Alegre, RS", action: "baixou 8 lâminas didáticas em alta definição", time: "há 14 minutos", avatar: "🔬" },
+  { name: "Camila Esteves", role: "Psicóloga do Luto & Perdas", city: "Rio de Janeiro, RJ", action: "ativou o Vitalício no PIX com desconto", time: "há 18 minutos", avatar: "🕊️" },
+  { name: "Bruno Rezende", role: "Terapeuta Junguiano", city: "Brasília, DF", action: "gerou carrossel de autoconhecimento", time: "há 23 minutos", avatar: "📖" },
+  { name: "Monique Vasques", role: "Psicopedagoga & TDAH em Adultos", city: "Florianópolis, SC", action: "ativou o Plano Vitalício (Lote 1)", time: "há 28 minutos", avatar: "🧩" },
+  { name: "Daniela Alencar", role: "Psicologia Positiva & Hábitos", city: "Salvador, BA", action: "entrou no Canal VIP do WhatsApp", time: "há 34 minutos", avatar: "🌻" },
+  { name: "Felipe Guimarães", role: "Psicólogo Organizacional & Carreiras", city: "Campinas, SP", action: "exportou PDF para o LinkedIn", time: "há 40 minutos", avatar: "💼" },
+  { name: "Aline Brant", role: "Psicóloga Perinatal & Maternidade", city: "Goiânia, GO", action: "ativou o Vitalício por R$ 47,90", time: "há 46 minutos", avatar: "🤱" },
+
+  // --- CONFEITARIA, GASTRONOMIA & CAFÉS ---
+  { name: "Chef Carolina Salgado", role: "Confeitaria Artesanal & Bolos", city: "Belo Horizonte, MG", action: "gerou carrossel de menu de páscoa em 38s", time: "há 2 minutos", avatar: "🎂" },
+  { name: "Matheus Nogueira", role: "Padeiro Artesanal & Fermentação Natural", city: "São Paulo, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 6 minutos", avatar: "🥖" },
+  { name: "Priscila Meireles", role: "Doceria Gourmet & Brigadeiros", city: "Rio de Janeiro, RJ", action: "baixou carrossel visual e apetitoso", time: "há 9 minutos", avatar: "🍫" },
+  { name: "Lucas Dantas", role: "Barista & Dono de Cafeteria", city: "Curitiba, PR", action: "copiou legenda magnética com hashtags", time: "há 13 minutos", avatar: "☕" },
+  { name: "Jéssica Fontes", role: "Chocolatier & Doces Finos", city: "Florianópolis, SC", action: "ativou o Vitalício no PIX", time: "há 17 minutos", avatar: "🍬" },
+  { name: "Fábio Esteves", role: "Pizzaiolo & Consultor de Pizzarias", city: "Porto Alegre, RS", action: "gerou carrossel de dicas de massa", time: "há 22 minutos", avatar: "🍕" },
+  { name: "Beatriz Dorneles", role: "Confeiteira Vegana & Sem Glúten", city: "Brasília, DF", action: "ativou o Plano Vitalício (Lote 1)", time: "há 27 minutos", avatar: "🥑" },
+  { name: "Renato Peixoto", role: "Chef de Cozinha & Buffet para Festas", city: "Salvador, BA", action: "entrou no Canal VIP do WhatsApp", time: "há 33 minutos", avatar: "👨‍🍳" },
+  { name: "Amanda Castilho", role: "Gelateria & Sobremesas Geladas", city: "Campinas, SP", action: "gerou carrossel no celular em 42s", time: "há 39 minutos", avatar: "🍨" },
+  { name: "Rodrigo Toledo", role: "Consultor de Cardápios & Lucratividade", city: "Goiânia, GO", action: "ativou o Vitalício por R$ 47,90", time: "há 45 minutos", avatar: "📋" },
+
+  // --- EDUCAÇÃO, PROFESSORES & IDIOMAS ---
+  { name: "Profª Letícia Miranda", role: "Professora de Inglês para Negócios", city: "São Paulo, SP", action: "gerou carrossel de 10 expressões úteis", time: "há 3 minutos", avatar: "🇺🇸" },
+  { name: "Prof. Henrique Vianna", role: "Professor de Matemática para Concursos", city: "Brasília, DF", action: "ativou o Vitalício por R$ 47,90", time: "há 7 minutos", avatar: "📐" },
+  { name: "Carla Vasconcelos", role: "Mentora de Redação Nota 1000", city: "Fortaleza, CE", action: "baixou 8 lâminas de estrutura de redação", time: "há 11 minutos", avatar: "✍️" },
+  { name: "Prof. André Lourenço", role: "Espanhol para Viagens & Fluência", city: "Curitiba, PR", action: "copiou legenda didática com exercícios", time: "há 15 minutos", avatar: "🇪🇸" },
+  { name: "Renata Fagundes", role: "Pedagoga & Alfabetização Infantil", city: "Belo Horizonte, MG", action: "ativou o Vitalício no PIX com desconto", time: "há 19 minutos", avatar: "🎨" },
+  { name: "Prof. Thiago Esteves", role: "História & Atualidades para o ENEM", city: "Rio de Janeiro, RJ", action: "gerou carrossel cronológico em 33s", time: "há 24 minutos", avatar: "🏛️" },
+  { name: "Débora Zaidan", role: "Francês do Zero à Fluência", city: "Porto Alegre, RS", action: "ativou o Plano Vitalício (Lote 1)", time: "há 29 minutos", avatar: "🇫🇷" },
+  { name: "Prof. Vinícius Sampaio", role: "Física Descomplicada", city: "Recife, PE", action: "entrou no Canal VIP do WhatsApp", time: "há 35 minutos", avatar: "⚡" },
+  { name: "Vanessa Brant", role: "Mentora de Estudos & Produtividade", city: "Florianópolis, SC", action: "gerou carrossel de cronograma semanal", time: "há 41 minutos", avatar: "📅" },
+  { name: "Prof. Marcelo Salgado", role: "Preparatório para Exames e OAB", city: "Campinas, SP", action: "ativou o Vitalício por R$ 47,90", time: "há 47 minutos", avatar: "⚖️" },
+
+  // --- VIAGEM, TURISMO & HOSPEDAGEM ---
+  { name: "Camila Medeiros", role: "Especialista em Milhas & Passagens Baratas", city: "São Paulo, SP", action: "gerou carrossel de hacks de viagem em 31s", time: "há 2 minutos", avatar: "✈️" },
+  { name: "Felipe Castanho", role: "Guia de Turismo & Ecoturismo", city: "Foz do Iguaçu, PR", action: "ativou o Vitalício por R$ 47,90", time: "há 6 minutos", avatar: "🎒" },
+  { name: "Jéssica Alencar", role: "Dona de Pousada Boutique", city: "Jericoacoara, CE", action: "baixou carrossel com fotos dos quartos", time: "há 10 minutos", avatar: "🏖️" },
+  { name: "Rodrigo Diniz", role: "Agência de Viagens para Europa", city: "Porto Alegre, RS", action: "copiou legenda com roteiro de 7 dias", time: "há 14 minutos", avatar: "🗺️" },
+  { name: "Aline Toledo", role: "Consultora de Viagens com Crianças", city: "Curitiba, PR", action: "ativou o Vitalício no PIX", time: "há 18 minutos", avatar: "🧸" },
+  { name: "Bruno Peixoto", role: "Host Superhost de Airbnb", city: "Rio de Janeiro, RJ", action: "gerou carrossel de guia do bairro", time: "há 23 minutos", avatar: "🔑" },
+  { name: "Patrícia Rezende", role: "Intercâmbio & Vistos Internacionais", city: "Belo Horizonte, MG", action: "ativou o Plano Vitalício (Lote 1)", time: "há 28 minutos", avatar: "🌍" },
+  { name: "Lucas Esteves", role: "Fotógrafo de Viagens & Destinos", city: "Florianópolis, SC", action: "entrou no Canal VIP do WhatsApp", time: "há 34 minutos", avatar: "📸" },
+  { name: "Vanessa Siqueira", role: "Turismo Gastronômico & Roteiros de Vinhos", city: "Bento Gonçalves, RS", action: "gerou carrossel pelo celular em 37s", time: "há 40 minutos", avatar: "🍷" },
+  { name: "Thiago Salgado", role: "Expedições 4x4 & Aventura", city: "Cuiabá, MT", action: "ativou o Vitalício por R$ 47,90", time: "há 46 minutos", avatar: "🚙" },
+
+  // --- MAIS PROFISSIONAIS EM DESTAQUE ---
+  { name: "Natália Prado", role: "Designer Gráfica & Criadora de Marcas", city: "São Paulo, SP", action: "criou 3 templates no Canva Studio", time: "há 2 minutos", avatar: "🎨" },
+  { name: "Leandro Medeiros", role: "Fotógrafo de Ensaios Corporativos", city: "Belo Horizonte, MG", action: "ativou o Vitalício por R$ 47,90", time: "há 5 minutos", avatar: "📷" },
+  { name: "Bruna Albuquerque", role: "Videomaker Comercial & Reels", city: "Rio de Janeiro, RJ", action: "gerou carrossel para cliente de restaurante", time: "há 8 minutos", avatar: "🎥" },
+  { name: "Renan Fagundes", role: "Gestor de E-commerce de Moda", city: "Franca, SP", action: "baixou 8 lâminas de catálogo de produtos", time: "há 12 minutos", avatar: "👗" },
+  { name: "Carla Dorneles", role: "Consultora de Organização Pessoal (P.O.)", city: "Curitiba, PR", action: "copiou legenda com método de arrumação", time: "há 16 minutos", avatar: "📦" },
+  { name: "Fábio Silveira", role: "Especialista em Vendas no Mercado Livre", city: "Campinas, SP", action: "ativou o Vitalício no PIX com desconto", time: "há 20 minutos", avatar: "📦" },
+  { name: "Beatriz Esteves", role: "Podcaster & Criadora de Mídia", city: "Brasília, DF", action: "gerou carrossel com frases do episódio", time: "há 25 minutos", avatar: "🎙️" },
+  { name: "Thiago Brant", role: "Estrategista de Tráfego Local para Clínicas", city: "Goiânia, GO", action: "ativou o Plano Vitalício (Lote 1)", time: "há 30 minutos", avatar: "📍" },
+  { name: "Débora Peixoto", role: "Consultora de Recursos Humanos & Talentos", city: "Porto Alegre, RS", action: "entrou no Canal VIP do WhatsApp", time: "há 36 minutos", avatar: "👥" },
+  { name: "Alexandre Zaidan", role: "Corretor de Seguros & Blindagem Patrimonial", city: "Salvador, BA", action: "gerou carrossel sobre seguro de vida em 35s", time: "há 42 minutos", avatar: "🛡️" },
+  { name: "Sabrina Lourenço", role: "Veterinária de Cães & Gatos", city: "Florianópolis, SC", action: "ativou o Vitalício por R$ 47,90", time: "há 47 minutos", avatar: "🐾" },
+];

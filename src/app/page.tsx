@@ -164,7 +164,7 @@ export default function MagicCarouselsApp() {
   const [scarcityTier, setScarcityTier] = useState<TierInfo>(getTierForUserCount(0));
   const [activeTesters24h, setActiveTesters24h] = useState<number>(147);
   const [socialProofIdx, setSocialProofIdx] = useState<number>(0);
-  const [showSocialToast, setShowSocialToast] = useState<boolean>(true);
+  const [showSocialToast, setShowSocialToast] = useState<boolean>(false);
 
   // Gerador de Legenda Magnética & Hashtags Estratégicas para o Post
   const [captionCopied, setCaptionCopied] = useState<boolean>(false);
@@ -289,12 +289,33 @@ export default function MagicCarouselsApp() {
     ping(); const timer = setInterval(ping,30000); return () => clearInterval(timer);
   }, [user?.id, activeTab]);
 
-  // Rotação de prova social ao vivo a cada 7.5 segundos
+  // Controle de Notificações de Prova Social (Surge aos 3.5s, dura 6.5s e alterna a cada 30s entre 200+ perfis)
   useEffect(() => {
-    const t = setInterval(() => {
-      setSocialProofIdx((prev) => (prev + 1) % LIVE_SOCIAL_PROOF.length);
-    }, 7500);
-    return () => clearInterval(t);
+    let hideTimer: NodeJS.Timeout;
+
+    // 1ª aparição suave após 3.5 segundos da abertura do site
+    const initialTimer = setTimeout(() => {
+      setSocialProofIdx(Math.floor(Math.random() * LIVE_SOCIAL_PROOF.length));
+      setShowSocialToast(true);
+      hideTimer = setTimeout(() => {
+        setShowSocialToast(false);
+      }, 6500);
+    }, 3500);
+
+    // Ciclo a cada 30 segundos: sorteia uma nova notificação entre as mais de 200 e exibe por 6.5s
+    const cycleInterval = setInterval(() => {
+      setSocialProofIdx(Math.floor(Math.random() * LIVE_SOCIAL_PROOF.length));
+      setShowSocialToast(true);
+      hideTimer = setTimeout(() => {
+        setShowSocialToast(false);
+      }, 6500);
+    }, 30000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearTimeout(hideTimer);
+      clearInterval(cycleInterval);
+    };
   }, []);
 
   // Legenda magnética e hashtags estratégicas calculadas de forma reativa
@@ -4274,47 +4295,55 @@ export default function MagicCarouselsApp() {
         </button>
       </div>
 
-      {/* NOTIFICAÇÃO FLUTUANTE DE PROVA SOCIAL AO VIVO (+100 TESTADORES EM MENOS DE 24H) */}
-      {showSocialToast && LIVE_SOCIAL_PROOF[socialProofIdx] && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "80px",
-            left: "20px",
-            zIndex: 999,
-            maxWidth: "350px",
-            background: "rgba(18, 18, 24, 0.95)",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            borderRadius: "16px",
-            padding: "12px 16px",
-            boxShadow: "0 16px 36px rgba(0,0,0,0.6)",
-            backdropFilter: "blur(12px)",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <div style={{ fontSize: "24px", lineHeight: 1 }}>{LIVE_SOCIAL_PROOF[socialProofIdx].avatar}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "12px", fontWeight: 800, color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {LIVE_SOCIAL_PROOF[socialProofIdx].name}
+      {/* NOTIFICAÇÃO FLUTUANTE DE PROVA SOCIAL AO VIVO (200+ NOTIFICAÇÕES A CADA 30s) */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: "80px",
+          left: "20px",
+          zIndex: 999,
+          maxWidth: "360px",
+          background: "rgba(18, 18, 24, 0.95)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          borderRadius: "16px",
+          padding: "12px 16px",
+          boxShadow: "0 16px 36px rgba(0,0,0,0.6), 0 0 20px rgba(225, 48, 108, 0.12)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          opacity: showSocialToast ? 1 : 0,
+          transform: showSocialToast ? "translateY(0) scale(1)" : "translateY(16px) scale(0.96)",
+          pointerEvents: showSocialToast ? "auto" : "none",
+          transition: "opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        {LIVE_SOCIAL_PROOF[socialProofIdx] && (
+          <>
+            <div style={{ fontSize: "26px", lineHeight: 1 }}>{LIVE_SOCIAL_PROOF[socialProofIdx].avatar}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "12.5px", fontWeight: 800, color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {LIVE_SOCIAL_PROOF[socialProofIdx].name}
+              </div>
+              <div style={{ fontSize: "11px", color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {LIVE_SOCIAL_PROOF[socialProofIdx].role} • {LIVE_SOCIAL_PROOF[socialProofIdx].city}
+              </div>
+              <div style={{ fontSize: "11px", color: "#f472b6", fontWeight: 700, marginTop: "2px" }}>
+                {LIVE_SOCIAL_PROOF[socialProofIdx].action} • <span style={{ color: "#64748b" }}>{LIVE_SOCIAL_PROOF[socialProofIdx].time}</span>
+              </div>
             </div>
-            <div style={{ fontSize: "11px", color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {LIVE_SOCIAL_PROOF[socialProofIdx].role} • {LIVE_SOCIAL_PROOF[socialProofIdx].city}
-            </div>
-            <div style={{ fontSize: "11px", color: "#f472b6", fontWeight: 700, marginTop: "2px" }}>
-              {LIVE_SOCIAL_PROOF[socialProofIdx].action} • <span style={{ color: "#64748b" }}>{LIVE_SOCIAL_PROOF[socialProofIdx].time}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowSocialToast(false)}
-            style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "14px", padding: "2px" }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setShowSocialToast(false)}
+              aria-label="Fechar notificação"
+              style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "14px", padding: "4px" }}
+            >
+              ✕
+            </button>
+          </>
+        )}
+      </div>
 
       {/* BOTÃO FLUTUANTE DE ACESSO AO CANAL DO WHATSAPP */}
       <a
