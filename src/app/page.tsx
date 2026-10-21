@@ -1072,21 +1072,17 @@ export default function MagicCarouselsApp() {
               userSelect: "none",
             }}
           >
-            <div
+            <img
+              src="/favicon.png"
+              alt="Magic Carousels Logo"
               style={{
                 width: "42px",
                 height: "42px",
-                borderRadius: "14px",
-                background: "var(--ig-sunset)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 6px 20px rgba(225, 48, 108, 0.4)",
+                objectFit: "contain",
+                filter: "drop-shadow(0 4px 14px rgba(225, 48, 108, 0.5))",
                 flexShrink: 0,
               }}
-            >
-              <span style={{ fontSize: "22px", lineHeight: 1 }}>⚡</span>
-            </div>
+            />
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.05 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                 <span style={{ fontSize: "21px", fontWeight: 900, color: "#ffffff", letterSpacing: "-0.5px" }}>
