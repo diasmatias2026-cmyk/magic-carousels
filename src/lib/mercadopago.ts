@@ -13,13 +13,24 @@ export function getMercadoPagoPayment(id: string) {
   return new Payment(client()).get({ id });
 }
 export async function checkout(id: string, email: string, amount: number) {
-  const base = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
-  if (!base?.startsWith("https://") || !process.env.MERCADOPAGO_WEBHOOK_SECRET)
+  const rawBase =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "https://magiccarousels.vercel.app");
+
+  const url = rawBase.startsWith("http")
+    ? new URL(rawBase).origin
+    : `https://${rawBase}`;
+
+  if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
     throw new HttpError(
       503,
-      "Pagamento em configuração. Entre em contato com comercial@splinkapp.com.br.",
+      "Configure a variável MERCADOPAGO_ACCESS_TOKEN na Vercel para ativar o checkout.",
     );
-  const url = new URL(base).origin;
+  }
+
   return new Preference(client()).create({
     body: {
       items: [

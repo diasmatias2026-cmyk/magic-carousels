@@ -7,15 +7,21 @@ export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const hasSecretKey = Boolean(process.env.SUPABASE_SECRET_KEY);
   const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasMpToken = Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN);
+  const hasMpWebhookSecret = Boolean(process.env.MERCADOPAGO_WEBHOOK_SECRET);
+  const appUrl = process.env.APP_URL || "https://magiccarousels.vercel.app";
   const nodeEnv = process.env.NODE_ENV;
 
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     nodeEnv,
+    appUrl,
     environmentVariables: {
       NEXT_PUBLIC_SUPABASE_URL: supabaseUrl ? `${supabaseUrl.substring(0, 15)}...` : "NÃO CONFIGURADO ❌",
       SUPABASE_SECRET_KEY: hasSecretKey ? "CONFIGURADO (service_role) ✅" : "NÃO CONFIGURADO ❌",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: hasAnonKey ? "CONFIGURADO ✅" : "NÃO CONFIGURADO ❌",
+      MERCADOPAGO_ACCESS_TOKEN: hasMpToken ? "CONFIGURADO (token ativo) ✅" : "NÃO CONFIGURADO ⚠️ (necessário p/ checkout)",
+      MERCADOPAGO_WEBHOOK_SECRET: hasMpWebhookSecret ? "CONFIGURADO ✅" : "NÃO CONFIGURADO ⚠️ (necessário p/ webhook automático)",
     },
     tables: {
       app_users: "não testado",
