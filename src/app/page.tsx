@@ -154,7 +154,20 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
   });
 
   // Navegação principal: Landing, Criador, Meus Projetos, Inspiração Viral, Templates, Canva Studio, Tutoriais, Checkout
-  const [activeTab, setActiveTab] = useState<"landing" | "creator" | "templates" | "canva-studio" | "projects" | "inspiration" | "tutorials" | "checkout">(initialTab);
+  const [activeTab, setActiveTab] = useState<"landing" | "creator" | "templates" | "canva-studio" | "projects" | "inspiration" | "tutorials" | "checkout">(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      if (tabParam === "projects") return "projects";
+      if (tabParam === "studio" || tabParam === "canva-studio") return "canva-studio";
+      if (tabParam === "templates") return "templates";
+      if (tabParam === "inspiration") return "inspiration";
+      if (tabParam === "tutorials") return "tutorials";
+      if (tabParam === "checkout") return "checkout";
+      if (window.location.pathname.startsWith("/app")) return "creator";
+    }
+    return initialTab;
+  });
 
   // Estado da Área de Projetos do Usuário (Sincronizado via localStorage e /api/carousels)
   const [savedProjects, setSavedProjects] = useState<Array<{
@@ -348,6 +361,11 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
               setAvatarImage(data.user.brandKit.avatarUrl);
             }
           }
+          // Se o usuário já está autenticado e abriu a rota raiz ("/"), direcionar para o app oficial ("/app")
+          if (typeof window !== "undefined" && window.location.pathname === "/" && !window.location.search) {
+            setActiveTab("creator");
+            window.history.replaceState({ tab: "creator" }, "", "/app");
+          }
         }
       } catch (err) {
         console.error("Session load error:", err);
@@ -369,6 +387,69 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       }
     }
     loadScarcity();
+  }, []);
+
+  // Sincronizar URL da barra de endereços com a aba ativa
+  useEffect(() => {
+    if (typeof window === "undefined" || authLoading) return;
+    const currentPath = window.location.pathname;
+    const currentSearch = window.location.search;
+
+    let targetPath = "/";
+    let targetSearch = "";
+
+    if (activeTab === "creator") {
+      targetPath = "/app";
+    } else if (activeTab === "projects") {
+      targetPath = "/app";
+      targetSearch = "?tab=projects";
+    } else if (activeTab === "canva-studio") {
+      targetPath = "/app";
+      targetSearch = "?tab=studio";
+    } else if (activeTab === "templates") {
+      targetPath = user ? "/app" : "/";
+      targetSearch = user ? "?tab=templates" : "";
+    } else if (activeTab === "inspiration") {
+      targetPath = user ? "/app" : "/";
+      targetSearch = user ? "?tab=inspiration" : "";
+    } else if (activeTab === "tutorials") {
+      targetPath = "/app";
+      targetSearch = "?tab=tutorials";
+    } else if (activeTab === "checkout") {
+      targetPath = "/app";
+      targetSearch = "?tab=checkout";
+    } else if (activeTab === "landing") {
+      targetPath = "/";
+      targetSearch = "";
+    }
+
+    const targetUrl = `${targetPath}${targetSearch}`;
+    if (`${currentPath}${currentSearch}` !== targetUrl) {
+      window.history.replaceState({ tab: activeTab }, "", targetUrl);
+    }
+  }, [activeTab, user, authLoading]);
+
+  // Permitir voltar/avançar no histórico do navegador entre abas
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state?.tab) {
+        setActiveTab(e.state.tab);
+      } else if (typeof window !== "undefined") {
+        if (window.location.pathname.startsWith("/app")) {
+          const tabParam = new URLSearchParams(window.location.search).get("tab");
+          if (tabParam === "projects") setActiveTab("projects");
+          else if (tabParam === "studio") setActiveTab("canva-studio");
+          else if (tabParam === "templates") setActiveTab("templates");
+          else if (tabParam === "inspiration") setActiveTab("inspiration");
+          else if (tabParam === "tutorials") setActiveTab("tutorials");
+          else setActiveTab("creator");
+        } else {
+          setActiveTab("landing");
+        }
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
