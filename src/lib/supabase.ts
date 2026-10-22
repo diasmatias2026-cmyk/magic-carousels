@@ -2,10 +2,26 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { HttpError } from "./http";
 
+function sanitizeUrl(raw?: string): string {
+  if (!raw) return "";
+  let u = raw.trim().replace(/^['"]|['"]$/g, "");
+  if (!u) return "";
+  if (!/^https?:\/\//i.test(u)) {
+    u = `https://${u}`;
+  }
+  return u;
+}
+
+function sanitizeKey(raw?: string): string {
+  if (!raw) return "";
+  return raw.trim().replace(/^['"]|['"]$/g, "");
+}
+
 export function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = sanitizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = sanitizeKey(
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
   if (!url || !key) {
     throw new HttpError(
@@ -18,3 +34,4 @@ export function getSupabaseAdmin() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
+
