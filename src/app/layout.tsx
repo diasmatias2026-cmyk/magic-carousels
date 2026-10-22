@@ -42,6 +42,30 @@ export default function RootLayout({
           Pular para o conteúdo
         </a>
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+                  document.addEventListener("contextmenu", function(e) {
+                    if (e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+                      e.preventDefault();
+                    }
+                  });
+                  document.addEventListener("keydown", function(e) {
+                    if (
+                      e.key === "F12" ||
+                      (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) ||
+                      (e.ctrlKey && (e.key === "U" || e.key === "u"))
+                    ) {
+                      e.preventDefault();
+                    }
+                  });
+                }
+              })();
+            `,
+          }}
+        />
       </body>
     </html>
   );

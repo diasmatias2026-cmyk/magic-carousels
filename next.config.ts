@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  productionBrowserSourceMaps: false,
   experimental: {
     cpus: 1,
   },
