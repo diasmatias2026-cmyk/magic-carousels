@@ -35,10 +35,21 @@ export async function body(req: Request, max = 100000) {
     throw new HttpError(400, "Envie JSON válido.");
   }
 }
+export function stripHtml(str: string): string {
+  return str
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+\s*=/gi, "");
+}
+
 export function text(v: unknown, min: number, max: number, label: string) {
-  if (typeof v !== "string" || v.trim().length < min || v.trim().length > max)
+  if (typeof v !== "string") throw new HttpError(400, label + " inválido.");
+  const cleaned = stripHtml(v).trim();
+  if (cleaned.length < min || cleaned.length > max)
     throw new HttpError(400, label + " inválido.");
-  return v.trim();
+  return cleaned;
 }
 export function uuid(v: unknown) {
   if (
