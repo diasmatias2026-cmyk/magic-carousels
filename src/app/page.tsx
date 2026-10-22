@@ -905,7 +905,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       const res = await fetch(id ? "/api/carousels/" + id : "/api/carousels", {method:id ? "PUT" : "POST",headers:{"Content-Type":"application/json"},body:payload});
       const data = await res.json();
       if (!res.ok) { if(res.status===402){setPaywallMessage(data.error);setIsPaywallOpen(true);} throw new Error(data.error || "Não foi possível salvar."); }
-      if (!id) { setCarouselId(data.id); setUser(prev => prev ? {...prev,freeTrialsUsed:prev.freeTrialsUsed + 1} : prev); window.history.replaceState(null,"","/?project=" + data.id); }
+      if (!id) { setCarouselId(data.id); setUser(prev => prev ? {...prev,freeTrialsUsed:prev.freeTrialsUsed + 1} : prev); window.history.replaceState(null,"","/app?project=" + data.id); }
       const currentSaved = {
         id: data.id || id || `proj_${Date.now()}`,
         title: (title || topic).slice(0, 140),
@@ -1259,14 +1259,18 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       setIsAuthModalOpen(true);
       return;
     }
-
+    if (typeof window !== "undefined" && window.innerWidth < 1024 && mobileViewMode !== "preview") {
+      setMobileViewMode("preview");
+      await new Promise(r => setTimeout(r, 120));
+    }
     if (!(await persistCarousel())) return;
     await document.fonts.ready;
     const { toPng } = await import("html-to-image");
     const node = document.getElementById(`live-slide-render-${activeSlideIndex}`);
     if (!node) return;
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 1080 / node.offsetWidth });
+      const ratio = node.offsetWidth > 0 ? 1080 / node.offsetWidth : 2;
+      const dataUrl = await toPng(node, { pixelRatio: ratio });
       const link = document.createElement("a");
       link.download = `carrossel-slide-${activeSlideIndex + 1}.png`;
       link.href = dataUrl;
@@ -1282,7 +1286,10 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       setIsAuthModalOpen(true);
       return;
     }
-
+    if (typeof window !== "undefined" && window.innerWidth < 1024 && mobileViewMode !== "preview") {
+      setMobileViewMode("preview");
+      await new Promise(r => setTimeout(r, 120));
+    }
     if (!(await persistCarousel())) return;
     await document.fonts.ready;
     const { toPng } = await import("html-to-image");
@@ -1294,7 +1301,8 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       for (let i = 0; i < slides.length; i++) {
         const node = document.getElementById(`live-slide-render-${i}`);
         if (node) {
-          const dataUrl = await toPng(node, { pixelRatio: 1080 / node.offsetWidth });
+          const ratio = node.offsetWidth > 0 ? 1080 / node.offsetWidth : 2;
+          const dataUrl = await toPng(node, { pixelRatio: ratio });
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
           zip.file(`slide-${i + 1}.png`, base64Data, { base64: true });
         }
@@ -1304,6 +1312,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       link.href = URL.createObjectURL(content);
       link.download = `carrossel-${topic.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.zip`;
       link.click();
+      setSaveMessage("Download do ZIP concluído!");
     } catch (err) {
       console.error(err);
       alert("Erro ao gerar pacote ZIP.");
@@ -1315,7 +1324,10 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       setIsAuthModalOpen(true);
       return;
     }
-
+    if (typeof window !== "undefined" && window.innerWidth < 1024 && mobileViewMode !== "preview") {
+      setMobileViewMode("preview");
+      await new Promise(r => setTimeout(r, 120));
+    }
     if (!(await persistCarousel())) return;
     await document.fonts.ready;
     const { toPng } = await import("html-to-image");
@@ -1332,12 +1344,14 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       for (let i = 0; i < slides.length; i++) {
         const node = document.getElementById(`live-slide-render-${i}`);
         if (node) {
-          const dataUrl = await toPng(node, { pixelRatio: 1080 / node.offsetWidth });
+          const ratio = node.offsetWidth > 0 ? 1080 / node.offsetWidth : 2;
+          const dataUrl = await toPng(node, { pixelRatio: ratio });
           if (i > 0) pdf.addPage([FORMAT_SIZES[format].w, FORMAT_SIZES[format].h], "portrait");
           pdf.addImage(dataUrl, "PNG", 0, 0, FORMAT_SIZES[format].w, FORMAT_SIZES[format].h);
         }
       }
       pdf.save(`carrossel-linkedin-${topic.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.pdf`);
+      setSaveMessage("Download do PDF concluído!");
     } catch (err) {
       console.error(err);
       alert("Erro ao gerar PDF.");
