@@ -26,6 +26,7 @@ import {
   INSPIRATION_CATEGORIES,
   type InspirationItem,
 } from "@/data/inspiration-carousels";
+import { AI_PROVIDERS, getProviderConfig, type AIModelOption } from "@/data/ai-providers";
 
 interface UserProfile {
   id: string;
@@ -141,8 +142,20 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
   const [registeredLeadId, setRegisteredLeadId] = useState<string | null>(null);
 
   // Chaves de IA salvas pelo usuário no navegador
-  const [userApiKey, setUserApiKey] = useState<string>("");
-  const [userAiProvider, setUserAiProvider] = useState<"gemini" | "openai" | "openrouter">("gemini");
+  const [userApiKey, setUserApiKey] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("mc_user_ai_key") || "";
+  });
+  const [userAiProvider, setUserAiProvider] = useState<"openrouter" | "gemini" | "openai" | "anthropic">(() => {
+    if (typeof window === "undefined") return "openrouter";
+    const saved = localStorage.getItem("mc_user_ai_provider");
+    return (saved as any) || "openrouter";
+  });
+  const [userAiModel, setUserAiModel] = useState<string>(() => {
+    if (typeof window === "undefined") return "meta-llama/llama-3.3-70b-instruct:free";
+    const saved = localStorage.getItem("mc_user_ai_model");
+    return saved || "meta-llama/llama-3.3-70b-instruct:free";
+  });
   const [aiKeyStatus, setAiKeyStatus] = useState<string>("");
   const [showCaptionSection, setShowCaptionSection] = useState(false);
 
@@ -832,34 +845,39 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
 
     setIsGenerating(true);
     try {
-      // 1. Se o usuário conectou sua chave do Google Gemini e escolheu modo API
-      if (userApiKey && userAiProvider === "gemini" && mode === "api-key") {
+      // 1. Se o usuário conectou sua chave de IA e escolheu modo API
+      if (userApiKey && mode === "api-key") {
         try {
-          const prompt = buildPrompt({ topic, niche: selectedNiche, slideCount, tone: selectedTone });
-          const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(userApiKey)}`, {
+          const genRes = await fetch("/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: "application/json" },
+              topic,
+              niche: selectedNiche,
+              slideCount,
+              tone: selectedTone,
+              templateId: currentTemplateId,
+              format,
+              apiKey: userApiKey,
+              provider: userAiProvider,
+              model: userAiModel,
             }),
           });
-          if (geminiRes.ok) {
-            const gemData = await geminiRes.json();
-            const textContent = gemData.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (textContent) {
-              const parsed = parseAIResponse(textContent);
-              setSlides(parsed.slides);
-              setCarouselTitle(parsed.title);
-              setCarouselCaption(parsed.caption);
-              setActiveSlideIndex(0);
-              scrollToSlide(0, "both");
-              persistCarousel(parsed.slides, parsed.title, parsed.caption, null).catch(() => {});
-              return;
-            }
+          const genData = await genRes.json();
+          if (genRes.ok && genData.slides && genData.slides.length > 0) {
+            setSlides(genData.slides);
+            setCarouselTitle(genData.title || topic);
+            setCarouselCaption(genData.caption || "");
+            if (genData.id) setCarouselId(genData.id);
+            setActiveSlideIndex(0);
+            scrollToSlide(0, "both");
+            return;
+          } else {
+            console.warn("Falha na geração via /api/generate:", genData.error);
+            alert(`Aviso da IA (${userAiProvider.toUpperCase()}): ${genData.error || "Não foi possível gerar com esta chave/modelo. Gerando versão estruturada de alta conversão..."}`);
           }
         } catch (apiErr) {
-          console.warn("Falha ao consultar API direta, usando gerador nichado estruturado:", apiErr);
+          console.warn("Erro ao consultar /api/generate:", apiErr);
         }
       }
 
@@ -4383,40 +4401,144 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                       </div>
                     )}
 
-                    {/* MODO 3: IA DIRETA VIA CHAVE DO USUÁRIO */}
-                    {mode === "api-key" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {userApiKey ? (
-                          <>
-                            <div style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "10px", borderRadius: "10px", fontSize: "12px", color: "#86efac" }}>
-                              ✓ Chave do <strong>{userAiProvider.toUpperCase()}</strong> conectada no seu navegador!
+                    {/* MODO 3: IA DIRETA VIA CHAVE DO USUÁRIO (COM SELEÇÃO DE MODELO & OPENROUTER GRÁTIS) */}
+                    {mode === "api-key" && (() => {
+                      const currentProvider = getProviderConfig(userAiProvider);
+                      const currentModel = currentProvider.models.find((m) => m.id === userAiModel) || currentProvider.models[0];
+
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(0,0,0,0.25)", padding: "14px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          {/* SELETOR DE PROVEDOR */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                              <label style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                Provedor de IA
+                              </label>
+                              <span style={{ fontSize: "10.5px", color: "#38bdf8", fontWeight: 700 }}>
+                                {currentProvider.badge || ""}
+                              </span>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => generateDirect(false)}
-                              disabled={isGenerating}
-                              className="btn-primary-ig"
-                              style={{ width: "100%", padding: "14px", fontSize: "14px", borderRadius: "12px" }}
+                            <select
+                              className="studio-input"
+                              value={userAiProvider}
+                              onChange={(e) => {
+                                const newP = e.target.value as any;
+                                setUserAiProvider(newP);
+                                const newConfig = getProviderConfig(newP);
+                                setUserAiModel(newConfig.defaultModel);
+                                if (typeof window !== "undefined") {
+                                  localStorage.setItem("mc_user_ai_provider", newP);
+                                  localStorage.setItem("mc_user_ai_model", newConfig.defaultModel);
+                                }
+                              }}
+                              style={{ width: "100%", padding: "10px", fontSize: "13px" }}
                             >
-                              {isGenerating ? "✨ Gerando com IA..." : "✨ Gerar com Minha Chave de IA"}
-                            </button>
-                          </>
-                        ) : (
-                          <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.25)", padding: "12px", borderRadius: "12px", textAlign: "center" }}>
-                            <p style={{ fontSize: "12px", color: "#e2e8f0", marginBottom: "8px" }}>
-                              Você ainda não salvou sua chave do Google Gemini (grátis) ou OpenAI.
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => setActiveTab("tutorials")}
-                              style={{ background: "var(--ig-sunset)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer" }}
-                            >
-                              🎓 Abrir Tutorial & Salvar Chave Grátis →
-                            </button>
+                              {AI_PROVIDERS.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                        )}
-                      </div>
-                    )}
+
+                          {/* SELETOR DE MODELO */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                              <label style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                Modelo / LLM Selecionado
+                              </label>
+                              {currentModel?.isFree ? (
+                                <span style={{ fontSize: "10px", background: "rgba(34, 197, 94, 0.2)", color: "#86efac", padding: "2px 6px", borderRadius: "4px", fontWeight: 800 }}>
+                                  100% GRÁTIS
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: "10px", background: "rgba(168, 85, 247, 0.2)", color: "#d8b4fe", padding: "2px 6px", borderRadius: "4px", fontWeight: 800 }}>
+                                  PRO
+                                </span>
+                              )}
+                            </div>
+                            <select
+                              className="studio-input"
+                              value={userAiModel}
+                              onChange={(e) => {
+                                const newM = e.target.value;
+                                setUserAiModel(newM);
+                                if (typeof window !== "undefined") {
+                                  localStorage.setItem("mc_user_ai_model", newM);
+                                }
+                              }}
+                              style={{ width: "100%", padding: "10px", fontSize: "13px" }}
+                            >
+                              {currentProvider.models.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.badge ? `[${m.badge}] ` : ""}{m.name} {m.isFree ? "— Grátis" : ""}
+                                </option>
+                              ))}
+                            </select>
+                            {currentModel?.description && (
+                              <p style={{ margin: "5px 0 0 0", fontSize: "11.5px", color: "#94a3b8", lineHeight: 1.4 }}>
+                                💡 {currentModel.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* CAMPO DE CHAVE DE API COM LINK RÁPIDO */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                              <label style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                Sua Chave de API ({currentProvider.shortLabel})
+                              </label>
+                              <a
+                                href={currentProvider.keyUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: "11px", color: "#38bdf8", textDecoration: "none", fontWeight: 700 }}
+                              >
+                                🔗 Pegar Chave Grátis ↗
+                              </a>
+                            </div>
+                            <input
+                              type="password"
+                              className="studio-input"
+                              value={userApiKey}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setUserApiKey(val);
+                                if (typeof window !== "undefined") {
+                                  localStorage.setItem("mc_user_ai_key", val.trim());
+                                }
+                              }}
+                              placeholder={`Cole sua chave ${currentProvider.keyPrefix}`}
+                              style={{ width: "100%", padding: "10px", fontSize: "12.5px" }}
+                            />
+                            {!userApiKey && (
+                              <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#f59e0b" }}>
+                                ⚠️ Cole sua chave acima para gerar diretamente com o modelo escolhido.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* BOTÃO DE GERAÇÃO COM O MODELO */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!userApiKey.trim()) {
+                                alert(`Por favor, cole sua chave do ${currentProvider.shortLabel} no campo acima para gerar com este modelo.`);
+                                return;
+                              }
+                              generateDirect(false);
+                            }}
+                            disabled={isGenerating}
+                            className="btn-primary-ig"
+                            style={{ width: "100%", padding: "14px", fontSize: "13.5px", borderRadius: "12px", marginTop: "4px" }}
+                          >
+                            {isGenerating
+                              ? "✨ Gerando Carrossel com IA..."
+                              : `✨ Gerar Carrossel com ${currentModel.name}`}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -6572,101 +6694,193 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
               {/* CARDS COM LINKS DIRETOS PARA OBTER AS CHAVES */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px", marginBottom: "22px" }}>
                 <a
+                  href="https://openrouter.ai/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", background: "linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(99, 102, 241, 0.08))", border: "1px solid rgba(56, 189, 248, 0.35)", borderRadius: "16px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>1. OpenRouter (100% Grátis)</strong>
+                    <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#38bdf8", fontWeight: 800 }}>⭐ MAIS RECOMENDADO • SEM CARTÃO</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                    Acesso a <strong>Llama 3.3 70B</strong> (melhor texto grátis), <strong>DeepSeek R1</strong> e <strong>Gemini 2.0 Flash</strong> de graça. Crie a chave em 30 segundos!
+                  </p>
+                </a>
+
+                <a
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>Google Gemini (Grátis)</strong>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>2. Google Gemini (Grátis)</strong>
                     <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
                   </div>
-                  <span style={{ fontSize: "11px", color: "#22c55e", fontWeight: 700 }}>Recomendado • Gratuito pelo Google</span>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Clique aqui, faça login com sua conta Google e clique em "Create API key".</p>
+                  <span style={{ fontSize: "11px", color: "#22c55e", fontWeight: 700 }}>Oficial Google • 15 req/min Grátis</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                    Entre no Google AI Studio com sua conta Google e clique em "Create API key". Super rápido e estável.
+                  </p>
                 </a>
 
                 <a
                   href="https://platform.openai.com/api-keys"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>ChatGPT / OpenAI</strong>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>3. ChatGPT / OpenAI</strong>
                     <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
                   </div>
-                  <span style={{ fontSize: "11px", color: "#a855f7", fontWeight: 700 }}>Modelos GPT-4o e mini</span>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Clique aqui para acessar o painel de desenvolvedor da OpenAI e gerar sua chave.</p>
+                  <span style={{ fontSize: "11px", color: "#a855f7", fontWeight: 700 }}>GPT-4o Mini e GPT-4o</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                    Painel oficial da OpenAI para quem já possui créditos do ChatGPT.
+                  </p>
                 </a>
 
                 <a
-                  href="https://openrouter.ai/keys"
+                  href="https://console.anthropic.com/settings/keys"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>OpenRouter</strong>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>4. Anthropic Claude</strong>
                     <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
                   </div>
-                  <span style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 700 }}>Modelos diversos e gratuitos</span>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Permite usar vários modelos abertos como LLaMA, Claude e Mistral.</p>
+                  <span style={{ fontSize: "11px", color: "#f97316", fontWeight: 700 }}>Claude 3.5 Sonnet Oficial</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                    Console da Anthropic para redação de altíssimo nível humano e copywriting sofisticado.
+                  </p>
                 </a>
               </div>
 
-              {/* FORMULÁRIO SEGURO PARA SALVAR A CHAVE */}
-              <div style={{ background: "rgba(0,0,0,0.35)", padding: "18px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <span style={{ display: "block", fontSize: "13px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
-                  🔑 Salve sua Chave de IA Aqui:
+              {/* FORMULÁRIO SEGURO PARA SALVAR A CHAVE & ESCOLHER O MODELO */}
+              <div style={{ background: "rgba(0,0,0,0.35)", padding: "20px", borderRadius: "18px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <span style={{ display: "block", fontSize: "14px", fontWeight: 800, color: "#ffffff", marginBottom: "12px" }}>
+                  🔑 Configure seu Provedor, Modelo & Salve sua Chave:
                 </span>
-                
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px", marginBottom: "12px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>Provedor</label>
-                    <select
-                      className="studio-input"
-                      value={userAiProvider}
-                      onChange={(e) => {
-                        const p = e.target.value as any;
-                        setUserAiProvider(p);
-                        if (typeof window !== "undefined") localStorage.setItem("mc_user_ai_provider", p);
-                      }}
-                    >
-                      <option value="gemini">Google Gemini</option>
-                      <option value="openai">OpenAI (ChatGPT)</option>
-                      <option value="openrouter">OpenRouter</option>
-                    </select>
-                  </div>
 
-                  <div>
-                    <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>Chave de API (Cole aqui)</label>
-                    <input
-                      type="password"
-                      className="studio-input"
-                      value={userApiKey}
-                      onChange={(e) => {
-                        setUserApiKey(e.target.value);
-                        setAiKeyStatus("");
-                      }}
-                      placeholder={userAiProvider === "gemini" ? "AIzaSy..." : "sk-..."}
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  const currentProvider = getProviderConfig(userAiProvider);
+                  const currentModel = currentProvider.models.find((m) => m.id === userAiModel) || currentProvider.models[0];
 
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  return (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "12px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px", textTransform: "uppercase" }}>
+                            Provedor de IA
+                          </label>
+                          <select
+                            className="studio-input"
+                            value={userAiProvider}
+                            onChange={(e) => {
+                              const p = e.target.value as any;
+                              setUserAiProvider(p);
+                              const newConfig = getProviderConfig(p);
+                              setUserAiModel(newConfig.defaultModel);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("mc_user_ai_provider", p);
+                                localStorage.setItem("mc_user_ai_model", newConfig.defaultModel);
+                              }
+                            }}
+                            style={{ width: "100%", padding: "10px" }}
+                          >
+                            {AI_PROVIDERS.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                            <label style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>
+                              Modelo / LLM
+                            </label>
+                            {currentModel?.isFree && (
+                              <span style={{ fontSize: "9.5px", background: "rgba(34, 197, 94, 0.2)", color: "#86efac", padding: "1px 5px", borderRadius: "4px", fontWeight: 800 }}>
+                                GRÁTIS
+                              </span>
+                            )}
+                          </div>
+                          <select
+                            className="studio-input"
+                            value={userAiModel}
+                            onChange={(e) => {
+                              const m = e.target.value;
+                              setUserAiModel(m);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("mc_user_ai_model", m);
+                              }
+                            }}
+                            style={{ width: "100%", padding: "10px" }}
+                          >
+                            {currentProvider.models.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.badge ? `[${m.badge}] ` : ""}{m.name} {m.isFree ? "— Grátis" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {currentModel?.description && (
+                        <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", padding: "10px 14px", borderRadius: "10px", fontSize: "12px", color: "#bae6fd", marginBottom: "14px" }}>
+                          💡 <strong>Sobre este modelo:</strong> {currentModel.description}
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: "14px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                          <label style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>
+                            Chave de API ({currentProvider.shortLabel})
+                          </label>
+                          <a
+                            href={currentProvider.keyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: "11.5px", color: "#38bdf8", textDecoration: "none", fontWeight: 700 }}
+                          >
+                            {currentProvider.keyUrlLabel} ↗
+                          </a>
+                        </div>
+                        <input
+                          type="password"
+                          className="studio-input"
+                          value={userApiKey}
+                          onChange={(e) => {
+                            setUserApiKey(e.target.value);
+                            setAiKeyStatus("");
+                          }}
+                          placeholder={`Cole sua chave aqui (ex: ${currentProvider.keyPrefix})`}
+                          style={{ width: "100%", padding: "10px", fontSize: "13px" }}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => {
                       if (typeof window !== "undefined") {
                         localStorage.setItem("mc_user_ai_key", userApiKey.trim());
                         localStorage.setItem("mc_user_ai_provider", userAiProvider);
-                        setAiKeyStatus("✓ Chave salva com sucesso no seu navegador! Agora você pode gerar com 1 clique.");
+                        localStorage.setItem("mc_user_ai_model", userAiModel);
+                        setAiKeyStatus("✓ Chave e modelo salvos com sucesso no seu navegador! Agora você pode gerar carrosséis com 1 clique.");
                       }
                     }}
                     className="btn-primary-ig"
-                    style={{ padding: "8px 18px", fontSize: "12.5px" }}
+                    style={{ padding: "10px 22px", fontSize: "13px" }}
                   >
-                    💾 Salvar Chave
+                    💾 Salvar Configurações
                   </button>
 
                   {userApiKey && (
@@ -6674,7 +6888,9 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                       type="button"
                       onClick={() => {
                         setUserApiKey("");
-                        if (typeof window !== "undefined") localStorage.removeItem("mc_user_ai_key");
+                        if (typeof window !== "undefined") {
+                          localStorage.removeItem("mc_user_ai_key");
+                        }
                         setAiKeyStatus("Chave removida.");
                       }}
                       style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}
