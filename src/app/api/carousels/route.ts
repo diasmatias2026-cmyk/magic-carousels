@@ -25,6 +25,15 @@ export const GET = endpoint(async () => {
 export const POST = endpoint(async (req) => {
   const u = await requireUser();
   await limit(req, "create", 20, 60, u.id);
+
+  // Verificação de segurança: Usuário gratuito só tem direito a 1 carrossel de teste
+  if (u.plan !== "LIFETIME" && u.freeTrialsUsed >= 1) {
+    throw new HttpError(
+      402,
+      "Seu carrossel de teste gratuito já foi utilizado. Assine o plano Vitalício para criar novos projetos ilimitados."
+    );
+  }
+
   const b = await body(req, 4000000);
   if (b.duplicateId) {
     const r = await database()

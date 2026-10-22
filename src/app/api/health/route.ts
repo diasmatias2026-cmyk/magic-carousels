@@ -1,5 +1,6 @@
 import { connection, NextResponse } from "next/server";
 import { database } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   await connection();
@@ -10,6 +11,28 @@ export async function GET() {
   const hasMpWebhookSecret = Boolean(process.env.MERCADOPAGO_WEBHOOK_SECRET);
   const appUrl = process.env.APP_URL || "https://magiccarousels.vercel.app";
   const nodeEnv = process.env.NODE_ENV;
+
+  // Verificar se o usuário autenticado é admin
+  let isAdmin = false;
+  try {
+    const user = await getCurrentUser();
+    if (user?.isAdmin) isAdmin = true;
+  } catch {
+    isAdmin = false;
+  }
+
+  // Se não for admin, retorna resposta pública segura e simplificada
+  if (!isAdmin) {
+    const isConfigured = Boolean(supabaseUrl && hasSecretKey);
+    return NextResponse.json(
+      {
+        status: isConfigured ? "ok" : "degraded",
+        timestamp: new Date().toISOString(),
+        service: "Magic Carousels API",
+      },
+      { status: isConfigured ? 200 : 503 }
+    );
+  }
 
   const tables: Record<string, string> = {
     app_users: "não testado",
@@ -38,7 +61,7 @@ export async function GET() {
   if (!supabaseUrl || !hasSecretKey) {
     diagnostics.status = "error";
     diagnostics.message =
-      "Variáveis do Supabase faltando na Vercel! Adicione NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SECRET_KEY no painel da Vercel (Settings -> Environment Variables) e faça um REDEPLOY.";
+      "Variáveis do Supabase faltando na Vercel! Adicione NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SECRET_KEY no painel da Vercel e faça um REDEPLOY.";
     return NextResponse.json(diagnostics, { status: 500 });
   }
 

@@ -23,6 +23,12 @@ export const GET = endpoint(async () => {
 });
 export const POST = endpoint(async (req) => {
   const u = await requireUser();
+  if (u.plan !== "LIFETIME") {
+    throw new HttpError(
+      402,
+      "O estúdio de templates personalizados é exclusivo do plano Vitalício."
+    );
+  }
   await limit(req, "template", 10, 60, u.id);
   const b = await body(req, 1500000);
   const count = await database()

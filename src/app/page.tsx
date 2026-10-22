@@ -9,6 +9,7 @@ import { buildPrompt, parseAIResponse } from "@/lib/ai/prompt";
 import {
   TEMPLATES,
   TEMPLATE_CATEGORIES,
+  FREE_TEMPLATE_IDS,
   defaultTemplateForNiche,
   FONTS,
   type Template,
@@ -3663,7 +3664,84 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
               </button>
             </div>
 
-            {user && user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime ? (
+            {authLoading ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                <div style={{ fontSize: "28px", marginBottom: "12px" }}>⏳</div>
+                <p style={{ fontSize: "15px" }}>Carregando estúdio de criação...</p>
+              </div>
+            ) : !user ? (
+              <div
+                style={{
+                  maxWidth: "680px",
+                  margin: "30px auto",
+                  background: "linear-gradient(180deg, rgba(24, 24, 34, 0.95) 0%, rgba(18, 18, 24, 0.95) 100%)",
+                  border: "1px solid rgba(225, 48, 108, 0.35)",
+                  borderRadius: "24px",
+                  padding: "44px 28px",
+                  textAlign: "center",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(225, 48, 108, 0.15)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    borderRadius: "50%",
+                    background: "var(--ig-sunset)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "28px",
+                    margin: "0 auto 16px auto",
+                    boxShadow: "0 8px 24px rgba(225, 48, 108, 0.4)",
+                  }}
+                >
+                  🔒
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                  Acesso Restrito ao Estúdio
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "8px", lineHeight: 1.3 }}>
+                  Entre na sua conta para criar seu carrossel
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14.5px", maxWidth: "520px", margin: "12px auto 26px auto", lineHeight: 1.6 }}>
+                  O Magic Carousels Pro Studio é um ambiente de produção exclusivo. Crie sua conta gratuita em 10 segundos para testar seu primeiro carrossel ou entre na sua conta se já for cadastrado.
+                </p>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalMode("login");
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="btn-primary-ig"
+                    style={{ padding: "14px 28px", fontSize: "14px" }}
+                  >
+                    🔑 Entrar na Minha Conta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalMode("register");
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="btn-ghost-dark"
+                    style={{ padding: "14px 28px", fontSize: "14px" }}
+                  >
+                    ✨ Criar Conta Gratuita
+                  </button>
+                </div>
+                <div style={{ marginTop: "20px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("landing")}
+                    style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    ← Voltar para a página inicial
+                  </button>
+                </div>
+              </div>
+            ) : user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime ? (
               <div
                 style={{
                   maxWidth: "760px",
@@ -3760,7 +3838,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
               </div>
             ) : null}
 
-            {!(user && user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime) && (
+            {Boolean(user && !(user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime)) && (
               <>
               <div className="creator-split-grid">
               {/* COLUNA ESQUERDA: ESTÚDIO GUIADO DE 3 PASSOS E EDIÇÃO */}
@@ -3858,10 +3936,15 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                         .slice(0, 18)
                         .map((tpl) => {
                           const isSelected = currentTemplateId === tpl.id;
+                          const isFree = FREE_TEMPLATE_IDS.has(tpl.id);
                           return (
                             <div
                               key={tpl.id}
                               onClick={() => {
+                                if (user && user.plan !== "LIFETIME" && !isFree) {
+                                  alert("Este template é exclusivo do Plano Vitalício PRO. Escolha um template gratuito de teste ou faça upgrade para o Vitalício!");
+                                  return;
+                                }
                                 setCurrentTemplateId(tpl.id);
                                 setCustomBgColor("");
                                 setCustomTextColor("");
@@ -3883,11 +3966,18 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                                 position: "relative",
                               }}
                             >
-                              {isSelected && (
-                                <span style={{ position: "absolute", top: "4px", right: "6px", fontSize: "10px", background: "#e1306c", color: "#fff", borderRadius: "50%", width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
-                                  ✓
-                                </span>
-                              )}
+                              <div style={{ position: "absolute", top: "4px", right: "6px", display: "flex", gap: "4px", alignItems: "center" }}>
+                                {!isFree && (
+                                  <span style={{ fontSize: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#fff", borderRadius: "9999px", padding: "1px 5px", fontWeight: 900 }}>
+                                    PRO
+                                  </span>
+                                )}
+                                {isSelected && (
+                                  <span style={{ fontSize: "10px", background: "#e1306c", color: "#fff", borderRadius: "50%", width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
+                                    ✓
+                                  </span>
+                                )}
+                              </div>
                               <div style={{ height: "3px", width: "24px", background: tpl.colors.accent, borderRadius: "2px", marginBottom: "4px" }} />
                               <div style={{ fontSize: "11px", fontWeight: 900, lineHeight: 1.2, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                                 {tpl.name}
@@ -3906,7 +3996,13 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                         className="studio-input"
                         value={currentTemplateId}
                         onChange={(e) => {
-                          setCurrentTemplateId(e.target.value);
+                          const chosenId = e.target.value;
+                          const isFree = FREE_TEMPLATE_IDS.has(chosenId);
+                          if (user && user.plan !== "LIFETIME" && !isFree) {
+                            alert("Este template faz parte do Plano Vitalício PRO. Escolha um dos 6 templates gratuitos de teste ou desbloqueie o Vitalício!");
+                            return;
+                          }
+                          setCurrentTemplateId(chosenId);
                           setCustomBgColor("");
                           setCustomTextColor("");
                           setCustomAccentColor("");
@@ -3917,7 +4013,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                           <optgroup key={cat} label={`── ${cat} ──`} style={{ background: "#121218", color: "#f472b6" }}>
                             {allTemplates.filter((t) => t.category === cat).map((t) => (
                               <option key={t.id} value={t.id} style={{ background: "#181824", color: "#ffffff" }}>
-                                {t.name}
+                                {t.name} {!FREE_TEMPLATE_IDS.has(t.id) ? " (PRO 👑)" : " (Grátis 🆓)"}
                               </option>
                             ))}
                           </optgroup>
@@ -4869,43 +4965,122 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
         {/* ============================================================ */}
         {activeTab === "projects" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
-              <div>
-                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
-                  HISTÓRICO DE CRIAÇÕES & PRODUÇÃO
-                </span>
-                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
-                  Meus Projetos & Carrosséis ({savedProjects.length})
-                </h2>
-                <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                  Retome a edição, duplique ou faça o download dos seus carrosséis a qualquer momento.
-                </p>
+            {authLoading ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                <div style={{ fontSize: "28px", marginBottom: "12px" }}>⏳</div>
+                <p style={{ fontSize: "15px" }}>Carregando seus projetos...</p>
               </div>
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCarouselId(null);
-                    setTopic("Novo carrossel estratégico");
-                    setCarouselTitle("Novo carrossel estratégico");
-                    setSlides(buildNicheCarousel(selectedNiche, 7, "Novo carrossel estratégico").slides);
-                    setActiveTab("creator");
+            ) : !user ? (
+              <div
+                style={{
+                  maxWidth: "680px",
+                  margin: "30px auto",
+                  background: "linear-gradient(180deg, rgba(24, 24, 34, 0.95) 0%, rgba(18, 18, 24, 0.95) 100%)",
+                  border: "1px solid rgba(225, 48, 108, 0.35)",
+                  borderRadius: "24px",
+                  padding: "44px 28px",
+                  textAlign: "center",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(225, 48, 108, 0.15)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    borderRadius: "50%",
+                    background: "var(--ig-sunset)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "28px",
+                    margin: "0 auto 16px auto",
+                    boxShadow: "0 8px 24px rgba(225, 48, 108, 0.4)",
                   }}
-                  className="btn-primary-ig"
-                  style={{ padding: "10px 22px", fontSize: "13px" }}
                 >
-                  ➕ Criar Novo Carrossel
-                </button>
+                  🔒
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                  Acesso Restrito
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "8px", lineHeight: 1.3 }}>
+                  Entre na sua conta para ver seus projetos
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14.5px", maxWidth: "520px", margin: "12px auto 26px auto", lineHeight: 1.6 }}>
+                  Seus carrosséis salvos, downloads e históricos de produção ficam vinculados com segurança ao seu perfil. Faça login para continuar.
+                </p>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalMode("login");
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="btn-primary-ig"
+                    style={{ padding: "14px 28px", fontSize: "14px" }}
+                  >
+                    🔑 Entrar na Minha Conta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalMode("register");
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="btn-ghost-dark"
+                    style={{ padding: "14px 28px", fontSize: "14px" }}
+                  >
+                    ✨ Criar Conta Gratuita
+                  </button>
+                </div>
+                <div style={{ marginTop: "20px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("landing")}
+                    style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    ← Voltar para a página inicial
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+                  <div>
+                    <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
+                      HISTÓRICO DE CRIAÇÕES & PRODUÇÃO
+                    </span>
+                    <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
+                      Meus Projetos & Carrosséis ({savedProjects.length})
+                    </h2>
+                    <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+                      Retome a edição, duplique ou faça o download dos seus carrosséis a qualquer momento.
+                    </p>
+                  </div>
 
-            {projectsLoading && (
-              <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
-                <div style={{ fontSize: "24px", marginBottom: "8px" }}>⏳</div>
-                <span>Carregando seus projetos...</span>
-              </div>
-            )}
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCarouselId(null);
+                        setTopic("Novo carrossel estratégico");
+                        setCarouselTitle("Novo carrossel estratégico");
+                        setSlides(buildNicheCarousel(selectedNiche, 7, "Novo carrossel estratégico").slides);
+                        setActiveTab("creator");
+                      }}
+                      className="btn-primary-ig"
+                      style={{ padding: "10px 22px", fontSize: "13px" }}
+                    >
+                      ➕ Criar Novo Carrossel
+                    </button>
+                  </div>
+                </div>
+
+                {projectsLoading && (
+                  <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                    <div style={{ fontSize: "24px", marginBottom: "8px" }}>⏳</div>
+                    <span>Carregando seus projetos...</span>
+                  </div>
+                )}
 
             {!projectsLoading && savedProjects.length === 0 ? (
               <div
@@ -5091,6 +5266,8 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                   );
                 })}
               </div>
+            )}
+              </>
             )}
           </div>
         )}
@@ -5301,6 +5478,20 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                   <div
                     key={t.id}
                     onClick={() => {
+                      if (!user) {
+                        setAuthModalMode("login");
+                        setIsAuthModalOpen(true);
+                        return;
+                      }
+                      const isFree = FREE_TEMPLATE_IDS.has(t.id);
+                      if (user.plan !== "LIFETIME" && !isFree) {
+                        if (user.freeTrialsUsed >= 1 && !isPaidLifetime) {
+                          setActiveTab("creator");
+                          return;
+                        }
+                        alert("Este template faz parte do Plano Vitalício PRO. Escolha um dos 6 templates gratuitos de teste ou desbloqueie o Vitalício!");
+                        return;
+                      }
                       setCurrentTemplateId(t.id);
                       setCustomBgColor("");
                       setCustomTextColor("");
@@ -5333,11 +5524,22 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                         <span style={{ fontSize: "11px", fontWeight: 800, color: t.colors.accent }}>
                           01 / 07
                         </span>
-                        {t.badge && (
-                          <span style={{ fontSize: "9px", fontWeight: 900, background: t.colors.accent, color: "#ffffff", padding: "2px 8px", borderRadius: "9999px" }}>
-                            {t.badge}
-                          </span>
-                        )}
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          {!FREE_TEMPLATE_IDS.has(t.id) ? (
+                            <span style={{ fontSize: "9px", fontWeight: 900, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#ffffff", padding: "2px 8px", borderRadius: "9999px", boxShadow: "0 2px 8px rgba(245, 158, 11, 0.4)" }}>
+                              👑 PRO
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: "9px", fontWeight: 900, background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", border: "1px solid rgba(74, 222, 128, 0.4)", padding: "2px 8px", borderRadius: "9999px" }}>
+                              GRÁTIS
+                            </span>
+                          )}
+                          {t.badge && (
+                            <span style={{ fontSize: "9px", fontWeight: 900, background: t.colors.accent, color: "#ffffff", padding: "2px 8px", borderRadius: "9999px" }}>
+                              {t.badge}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -5386,29 +5588,164 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
         {/* ABA 4: CRIAR TEMPLATE DO ZERO COM TODAS FERRAMENTAS POSSÍVEIS */}
         {activeTab === "canva-studio" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
-              <div>
-                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
-                  ESTÚDIO DE DESIGN DO ZERO
-                </span>
-                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
-                  Criar Template do Zero com Todas Ferramentas
-                </h2>
-                <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                  Personalize cada pixel: gradientes, texturas blueprint/grain, tipografia editorial, sombras 3D, badges e indicadores.
-                </p>
+            {authLoading ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                <div style={{ fontSize: "28px", marginBottom: "12px" }}>⏳</div>
+                <p style={{ fontSize: "15px" }}>Carregando estúdio...</p>
               </div>
-
-              <button
-                type="button"
-                onClick={handleSaveCustomTemplate}
-                className="btn-primary-ig"
-                style={{ padding: "12px 28px", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}
+            ) : !user ? (
+              <div
+                style={{
+                  maxWidth: "680px",
+                  margin: "30px auto",
+                  background: "linear-gradient(180deg, rgba(24, 24, 34, 0.95) 0%, rgba(18, 18, 24, 0.95) 100%)",
+                  border: "1px solid rgba(225, 48, 108, 0.35)",
+                  borderRadius: "24px",
+                  padding: "44px 28px",
+                  textAlign: "center",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(225, 48, 108, 0.15)",
+                }}
               >
-                <span>💾</span>
-                <span>Salvar & Usar no Meu Carrossel</span>
-              </button>
-            </div>
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    borderRadius: "50%",
+                    background: "var(--ig-sunset)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "28px",
+                    margin: "0 auto 16px auto",
+                    boxShadow: "0 8px 24px rgba(225, 48, 108, 0.4)",
+                  }}
+                >
+                  🔒
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                  Acesso Restrito
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "8px", lineHeight: 1.3 }}>
+                  Entre na sua conta para acessar o Estúdio
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14.5px", maxWidth: "520px", margin: "12px auto 26px auto", lineHeight: 1.6 }}>
+                  O Estúdio de Design do Zero é uma ferramenta profissional de criação de temas e estilos. Faça login ou crie sua conta para continuar.
+                </p>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalMode("login");
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="btn-primary-ig"
+                    style={{ padding: "14px 28px", fontSize: "14px" }}
+                  >
+                    🔑 Entrar na Minha Conta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalMode("register");
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="btn-ghost-dark"
+                    style={{ padding: "14px 28px", fontSize: "14px" }}
+                  >
+                    ✨ Criar Conta Gratuita
+                  </button>
+                </div>
+                <div style={{ marginTop: "20px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("landing")}
+                    style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    ← Voltar para a página inicial
+                  </button>
+                </div>
+              </div>
+            ) : user.plan !== "LIFETIME" && !isPaidLifetime ? (
+              <div
+                style={{
+                  maxWidth: "740px",
+                  margin: "30px auto",
+                  background: "linear-gradient(180deg, rgba(24, 24, 34, 0.95) 0%, rgba(18, 18, 24, 0.95) 100%)",
+                  border: "1px solid rgba(225, 48, 108, 0.35)",
+                  borderRadius: "24px",
+                  padding: "44px 28px",
+                  textAlign: "center",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(225, 48, 108, 0.15)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    borderRadius: "50%",
+                    background: "var(--ig-sunset)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "28px",
+                    margin: "0 auto 16px auto",
+                    boxShadow: "0 8px 24px rgba(225, 48, 108, 0.4)",
+                  }}
+                >
+                  👑
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                  Recurso Exclusivo Vitalício PRO
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "8px", lineHeight: 1.3 }}>
+                  Estúdio de Design do Zero (Canva Studio)
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14.5px", maxWidth: "560px", margin: "12px auto 26px auto", lineHeight: 1.6 }}>
+                  O criador de templates do zero com texturas granulares, blueprint, paletas personalizadas e tipografia editorial é uma funcionalidade exclusiva para membros com Acesso Vitalício PRO.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleStartCheckout}
+                  className="btn-primary-ig"
+                  style={{ padding: "16px 36px", fontSize: "15px", borderRadius: "14px", fontWeight: 900, cursor: "pointer", border: "none" }}
+                >
+                  DESBLOQUEAR PLANO VITALÍCIO AGORA ⚡
+                </button>
+                <div style={{ marginTop: "16px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("creator")}
+                    style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Voltar para o Criador de Carrosséis →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+                  <div>
+                    <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
+                      ESTÚDIO DE DESIGN DO ZERO
+                    </span>
+                    <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
+                      Criar Template do Zero com Todas Ferramentas
+                    </h2>
+                    <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+                      Personalize cada pixel: gradientes, texturas blueprint/grain, tipografia editorial, sombras 3D, badges e indicadores.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveCustomTemplate}
+                    className="btn-primary-ig"
+                    style={{ padding: "12px 28px", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}
+                  >
+                    <span>💾</span>
+                    <span>Salvar & Usar no Meu Carrossel</span>
+                  </button>
+                </div>
 
             {/* PRESETS RÁPIDOS DE INSPIRAÇÃO VISUAL */}
             <div style={{ background: "rgba(18, 18, 24, 0.7)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: "16px 20px" }}>
@@ -6070,6 +6407,8 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                 </button>
               </div>
             </div>
+              </>
+            )}
           </div>
         )}
 
@@ -6319,7 +6658,14 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
 
         <button
           type="button"
-          onClick={() => setActiveTab("projects")}
+          onClick={() => {
+            if (!user) {
+              setAuthModalMode("login");
+              setIsAuthModalOpen(true);
+            } else {
+              setActiveTab("projects");
+            }
+          }}
           className={`mobile-tab-btn ${activeTab === "projects" ? "active" : ""}`}
         >
           <span style={{ fontSize: "17px" }}>📁</span>
@@ -6346,7 +6692,14 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
 
         <button
           type="button"
-          onClick={() => setActiveTab("canva-studio")}
+          onClick={() => {
+            if (!user) {
+              setAuthModalMode("login");
+              setIsAuthModalOpen(true);
+            } else {
+              setActiveTab("canva-studio");
+            }
+          }}
           className={`mobile-tab-btn ${activeTab === "canva-studio" ? "active" : ""}`}
         >
           <span style={{ fontSize: "17px" }}>🛠️</span>

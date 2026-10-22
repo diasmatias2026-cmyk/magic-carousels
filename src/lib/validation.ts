@@ -35,7 +35,9 @@ export function slides(value: unknown): Slide[] {
       result.bullets = s.bullets.map((v) => text(v, 1, 500, "Item"));
     }
     result.image = avatar(s.image);
-    result.imageMode = ["top", "background"].includes(String(s.imageMode))
+    result.imageMode = ["top", "background", "card", "avatar"].includes(
+      String(s.imageMode),
+    )
       ? (s.imageMode as Slide["imageMode"])
       : "none";
     result.align = s.align === "center" ? "center" : "left";
@@ -50,7 +52,7 @@ export function template(id: unknown, plan: string) {
   return t.id;
 }
 export function format(v: unknown) {
-  if (!["4:5", "1:1", "9:16"].includes(String(v)))
+  if (!["4:5", "3:4", "1:1", "9:16"].includes(String(v)))
     throw new HttpError(400, "Formato inválido.");
   return String(v);
 }
