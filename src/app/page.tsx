@@ -666,7 +666,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
     });
   }, [selectedNiche, topic, handle, slides]);
 
-  const activeCaptionText = editedCaptionText !== "" ? editedCaptionText : (postCaptionData?.fullCaption || "");
+  const activeCaptionText = editedCaptionText !== "" ? editedCaptionText : (carouselCaption || postCaptionData?.fullCaption || "");
 
   // Funções de copiar legenda e tags em 1 clique
   const handleCopyFullCaption = () => {
@@ -868,6 +868,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
             setSlides(genData.slides);
             setCarouselTitle(genData.title || topic);
             setCarouselCaption(genData.caption || "");
+            setEditedCaptionText("");
             if (genData.id) setCarouselId(genData.id);
             setActiveSlideIndex(0);
             scrollToSlide(0, "both");
@@ -886,6 +887,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       setSlides(sample.slides);
       setCarouselTitle(sample.title);
       setCarouselCaption(sample.caption);
+      setEditedCaptionText("");
       setActiveSlideIndex(0);
       scrollToSlide(0, "both");
 
@@ -1260,6 +1262,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
       setSlides(parsed.slides);
       setCarouselTitle(parsed.title);
       setCarouselCaption(parsed.caption);
+      setEditedCaptionText("");
       setActiveSlideIndex(0);
       setSlideCount(parsed.slides.length);
       setMode("direct");
@@ -5023,8 +5026,7 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
               </div>
             </div>
 
-            {/* SEÇÃO: LEGENDA & HASHTAGS ESTRATÉGICAS PRONTAS (EXIBIDA NO MODO PROMPT CHATGPT/CLAUDE) */}
-            {mode === "magic-prompt" && (
+            {/* SEÇÃO: LEGENDA & HASHTAGS ESTRATÉGICAS PRONTAS (EXIBIDA EM TODOS OS MODOS: 1 CLIQUE, PROMPT E IA DIRETA) */}
             <div
               style={{
                 background: "linear-gradient(180deg, rgba(18, 18, 24, 0.95) 0%, rgba(10, 10, 14, 0.98) 100%)",
@@ -5171,7 +5173,6 @@ export default function MagicCarouselsApp({ initialTab = "landing" }: { initialT
                 </div>
               </div>
             </div>
-            )}
             </>
             )}
           </div>

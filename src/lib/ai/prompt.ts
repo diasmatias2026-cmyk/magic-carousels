@@ -4,6 +4,7 @@
  * quanto pelas integrações de API (Gemini, OpenAI, OpenRouter).
  */
 import { getNiche } from "@/data/niches";
+import { generatePostCaption } from "@/lib/caption-engine";
 import {
   uid,
   type GeneratedCarousel,
@@ -58,12 +59,12 @@ REGRAS:
 - Último slide é "cta": chamada para salvar/compartilhar/seguir, com "cta" = texto do botão (máx. 3 palavras).
 - Slides do meio: majoritariamente "content" ("title" até 50 caracteres + "body" até 180 caracteres).
   Pode usar no máximo 1 "list" ("bullets" com 3 a 5 itens curtos), 1 "stat" ("stat" = número curto como "73%" ou "3x") e 1 "quote" ("title" = a frase, "author" = autor).
-- "caption": legenda magnética completa para Instagram e LinkedIn (gancho nos primeiros 120 caracteres antes do "ver mais", resumo estruturado dos slides, CTA persuasiva e bloco com 10 a 14 hashtags estratégicas nichadas sem shadowban).
+- "caption": OBRIGATÓRIO. Legenda magnética completa para o post no Instagram e LinkedIn contendo: 1. Gancho forte nos primeiros 120 caracteres (antes do "ver mais"); 2. Resumo estruturado do conteúdo dos slides; 3. Chamada para ação (CTA) persuasiva; 4. Bloco com 10 a 14 hashtags estratégicas nichadas sem shadowban.
 
 RESPONDA APENAS COM O JSON ABAIXO, SEM TEXTO ANTES OU DEPOIS:
 {
   "title": "título interno do carrossel",
-  "caption": "legenda do post",
+  "caption": "Gancho magnético aqui...\n\nResumo dos slides:\n▫️ Ponto 1: ...\n▫️ Ponto 2: ...\n\n📌 Salve este carrossel!\n\n.\n.\n.\n#hashtag1 #hashtag2 #hashtag3",
   "slides": [
     {"type": "cover", "kicker": "...", "title": "...", "body": "..."},
     {"type": "content", "title": "...", "body": "..."},
@@ -132,9 +133,26 @@ export function normalizeCarousel(
     s.type === "content" ? { ...s, kicker: String(k++).padStart(2, "0") } : s,
   );
 
+  let caption = str(r.caption) || str(r.legenda) || "";
+  // Se a IA não gerou legenda, veio vazia ou sem hashtags, enriquece com gancho e tags do nicho
+  if (!caption || caption.length < 25 || !caption.includes("#")) {
+    const autoCap = generatePostCaption({
+      niche: typeof r.niche === "string" ? r.niche : "marketing",
+      topic: str(r.title) || slides[0].title || fallbackTitle,
+      handle: str(r.handle) || "",
+      slidesCount: slides.length,
+      slideTitles: slides.map((s) => s.title).filter(Boolean) as string[],
+    });
+    if (!caption) {
+      caption = autoCap.fullCaption;
+    } else {
+      caption = `${caption}\n\n.\n.\n.\n${autoCap.hashtags.join(" ")}`;
+    }
+  }
+
   return {
     title: str(r.title) || slides[0].title || fallbackTitle,
-    caption: str(r.caption) || str(r.legenda) || "",
+    caption,
     slides,
   };
 }
