@@ -1,5 +1,5 @@
 export type SlideType = "cover" | "content" | "list" | "stat" | "quote" | "cta";
-export type ImageMode = "none" | "top" | "background";
+export type ImageMode = "none" | "top" | "background" | "card" | "avatar";
 export type CarouselFormat = "4:5" | "3:4" | "1:1" | "9:16";
 
 export interface Slide {

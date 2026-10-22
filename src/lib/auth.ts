@@ -11,6 +11,7 @@ export interface CurrentUser {
   freeTrialsUsed: number;
   isAdmin: boolean;
   brandKit: Record<string, unknown> | null;
+  createdAt?: string;
 }
 const ADMIN_EMAILS = new Set([
   "suporte.splinkagencia@gmail.com",
@@ -25,7 +26,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   const u = await db
     .from("app_users")
-    .select("id,name,email,plan,free_trials_used")
+    .select("id,name,email,plan,free_trials_used,created_at")
     .eq("id", uid)
     .maybeSingle();
 
@@ -64,6 +65,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   return {
     ...u.data,
     freeTrialsUsed: u.data.free_trials_used,
+    createdAt: u.data.created_at,
     isAdmin,
     brandKit,
   } as CurrentUser;

@@ -162,11 +162,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
 
+/* Select dropdown options contrast fix */
+select option,
+select optgroup {
+  background-color: #181824 !important;
+  color: #ffffff !important;
+}
+
 /* iPhone Device Mockup Frame */
 .iphone-frame {
   width: 100%;
   max-width: 380px;
-  height: 690px;
   background: #09090b;
   border-radius: 48px;
   padding: 11px;
@@ -175,6 +181,23 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   flex-direction: column;
   margin: 0 auto;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.iphone-frame.fmt-4-5 {
+  height: 630px;
+}
+
+.iphone-frame.fmt-3-4 {
+  height: 660px;
+}
+
+.iphone-frame.fmt-1-1 {
+  height: 545px;
+}
+
+.iphone-frame.fmt-9-16 {
+  height: 730px;
 }
 
 .iphone-island {

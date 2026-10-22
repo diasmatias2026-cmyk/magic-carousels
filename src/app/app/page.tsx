@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import Workspace from "@/components/workspace";
+import MagicCarouselsApp from "@/app/page";
+
 export const metadata: Metadata = {
-  title: "Seus projetos",
+  title: "Magic Carousels Pro Studio — Editor Oficial",
   robots: { index: false, follow: false },
 };
-export default function Page() {
-  return <div className="saas-shell"><Workspace /></div>;
+
+export default function AppPage() {
+  return <MagicCarouselsApp initialTab="creator" />;
 }

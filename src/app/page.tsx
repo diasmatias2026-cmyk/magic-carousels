@@ -33,6 +33,7 @@ interface UserProfile {
   plan: string; // FREE | LIFETIME
   freeTrialsUsed: number;
   isAdmin?: boolean;
+  createdAt?: string;
   brandKit?: {
     id: string;
     displayName: string;
@@ -49,7 +50,55 @@ const TONE_OPTIONS = [
   { id: "didatico", label: "Didático" },
 ];
 
-export default function MagicCarouselsApp() {
+const NICHE_SUGGESTIONS: Record<string, string[]> = {
+  fitness: [
+    "5 erros clássicos que impedem o ganho de massa",
+    "Mitos perigosos sobre alimentação pré-treino",
+    "Como manter a constância nos treinos sem desanimar",
+  ],
+  nutricao: [
+    "3 mitos sobre o jejum intermitente que ninguém te conta",
+    "Como montar um prato anti-inflamatório sem gastar muito",
+    "O que comer para acabar com o inchaço matinal",
+  ],
+  marketing: [
+    "Como transformar seguidores em clientes no direct",
+    "O roteiro de Reels que retém a atenção até o final",
+    "3 erros comuns que matam o alcance do seu perfil",
+  ],
+  financas: [
+    "Como começar a investir com R$ 100 de forma segura",
+    "Os 4 hábitos financeiros que sabotam sua riqueza",
+    "O passo a passo para montar sua reserva de emergência",
+  ],
+  negocios: [
+    "Como cobrar mais caro pelos seus serviços sem perder clientes",
+    "3 estratégias de vendas que funcionam em qualquer nicho",
+    "O segredo para organizar a rotina do seu negócio",
+  ],
+  psicologia: [
+    "Como controlar a ansiedade antes de reuniões ou decisões",
+    "Sinais silenciosos de que você está no limite do cansaço",
+    "Como dizer NÃO com elegância e sem culpa",
+  ],
+  beleza: [
+    "A ordem exata do skincare para quem tem pressa",
+    "5 cuidados simples para salvar cabelos ressecados",
+    "Como cuidar da pele no dia a dia sem gastar fortunas",
+  ],
+  educacao: [
+    "Como aprender qualquer matéria na metade do tempo",
+    "3 técnicas de memorização ativa comprovadas pela ciência",
+    "O método prático para eliminar a procrastinação nos estudos",
+  ],
+  espiritualidade: [
+    "3 minutos de presença matinal para blindar seu dia",
+    "Como acalmar pensamentos acelerados antes de dormir",
+    "O poder do desapego para destravar novas oportunidades",
+  ],
+};
+
+export default function MagicCarouselsApp({ initialTab = "landing" }: { initialTab?: "landing" | "creator" | "templates" | "canva-studio" | "projects" | "inspiration" | "tutorials" | "checkout" }) {
   // Usuário autenticado e sessão
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -90,6 +139,12 @@ export default function MagicCarouselsApp() {
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("https://whatsapp.com/channel/0029Vb95NoEKwqSYdC0K860H");
   const [registeredLeadId, setRegisteredLeadId] = useState<string | null>(null);
 
+  // Chaves de IA salvas pelo usuário no navegador
+  const [userApiKey, setUserApiKey] = useState<string>("");
+  const [userAiProvider, setUserAiProvider] = useState<"gemini" | "openai" | "openrouter">("gemini");
+  const [aiKeyStatus, setAiKeyStatus] = useState<string>("");
+  const [showCaptionSection, setShowCaptionSection] = useState(false);
+
   // Cronômetro Regressivo de Escassez (Oferta de Lançamento)
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
     hours: 0,
@@ -97,8 +152,8 @@ export default function MagicCarouselsApp() {
     seconds: 52,
   });
 
-  // Navegação principal: Landing, Criador, Meus Projetos, Inspiração Viral, Templates, Canva Studio, Checkout
-  const [activeTab, setActiveTab] = useState<"landing" | "creator" | "templates" | "canva-studio" | "projects" | "inspiration" | "checkout">("landing");
+  // Navegação principal: Landing, Criador, Meus Projetos, Inspiração Viral, Templates, Canva Studio, Tutoriais, Checkout
+  const [activeTab, setActiveTab] = useState<"landing" | "creator" | "templates" | "canva-studio" | "projects" | "inspiration" | "tutorials" | "checkout">(initialTab);
 
   // Estado da Área de Projetos do Usuário (Sincronizado via localStorage e /api/carousels)
   const [savedProjects, setSavedProjects] = useState<Array<{
@@ -186,8 +241,9 @@ export default function MagicCarouselsApp() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Modo Prompt Mágico (sem precisar de API)
-  const [mode, setMode] = useState<"direct" | "magic-prompt">("direct");
+  // Modo de Criação (Passo 3): Modelos Prontos | Super Prompt | Chave de IA Direta
+  const [mode, setMode] = useState<"direct" | "magic-prompt" | "api-key">("direct");
+  const [wizardTemplateCategory, setWizardTemplateCategory] = useState<string>("Todos");
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [aiPastedText, setAiPastedText] = useState("");
   const [parseError, setParseError] = useState("");
@@ -470,8 +526,13 @@ export default function MagicCarouselsApp() {
     scrollToSlide(0, "creator");
   };
 
-  // Controle de Notificações de Prova Social (Surge aos 3.5s, dura 6.5s e alterna a cada 30s entre 200+ perfis)
+  // Controle de Notificações de Prova Social (Apenas para visitantes na landing, NUNCA para clientes logados ou Vitalícios)
   useEffect(() => {
+    if (user?.plan === "LIFETIME" || isPaidLifetime || (user && activeTab !== "landing")) {
+      setShowSocialToast(false);
+      return;
+    }
+
     let hideTimer: NodeJS.Timeout;
 
     // 1ª aparição suave após 3.5 segundos da abertura do site
@@ -483,7 +544,7 @@ export default function MagicCarouselsApp() {
       }, 6500);
     }, 3500);
 
-    // Ciclo a cada 30 segundos: sorteia uma nova notificação entre as mais de 200 e exibe por 6.5s
+    // Ciclo a cada 30 segundos
     const cycleInterval = setInterval(() => {
       setSocialProofIdx(Math.floor(Math.random() * LIVE_SOCIAL_PROOF.length));
       setShowSocialToast(true);
@@ -497,7 +558,7 @@ export default function MagicCarouselsApp() {
       clearTimeout(hideTimer);
       clearInterval(cycleInterval);
     };
-  }, []);
+  }, [user?.plan, isPaidLifetime, user?.id, activeTab]);
 
   // Legenda magnética e hashtags estratégicas calculadas de forma reativa
   const postCaptionData = useMemo(() => {
@@ -689,14 +750,54 @@ export default function MagicCarouselsApp() {
 
     setIsGenerating(true);
     try {
+      // 1. Se o usuário conectou sua chave do Google Gemini e escolheu modo API
+      if (userApiKey && userAiProvider === "gemini" && mode === "api-key") {
+        try {
+          const prompt = buildPrompt({ topic, niche: selectedNiche, slideCount, tone: selectedTone });
+          const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(userApiKey)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: "application/json" },
+            }),
+          });
+          if (geminiRes.ok) {
+            const gemData = await geminiRes.json();
+            const textContent = gemData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textContent) {
+              const parsed = parseAIResponse(textContent);
+              setSlides(parsed.slides);
+              setCarouselTitle(parsed.title);
+              setCarouselCaption(parsed.caption);
+              setActiveSlideIndex(0);
+              scrollToSlide(0, "both");
+              persistCarousel(parsed.slides, parsed.title, parsed.caption, null).catch(() => {});
+              return;
+            }
+          }
+        } catch (apiErr) {
+          console.warn("Falha ao consultar API direta, usando gerador nichado estruturado:", apiErr);
+        }
+      }
+
+      // 2. Geração estruturada baseada no nicho e assunto (Zero falhas, instantâneo)
       const sample = buildNicheCarousel(selectedNiche, slideCount, topic);
-      if (!(await persistCarousel(sample.slides, sample.title, sample.caption, null))) return;
       setSlides(sample.slides);
       setCarouselTitle(sample.title);
       setCarouselCaption(sample.caption);
       setActiveSlideIndex(0);
       scrollToSlide(0, "both");
-    } finally { setIsGenerating(false); }
+
+      // Salva em segundo plano sem travar a experiência do usuário
+      persistCarousel(sample.slides, sample.title, sample.caption, null).catch((err) => {
+        console.warn("Salvamento em segundo plano:", err);
+      });
+    } catch (err) {
+      console.error("Erro na geração do carrossel:", err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   async function persistCarousel(nextSlides = slides, title = carouselTitle, caption = activeCaptionText || carouselCaption, id = carouselId) {
@@ -1265,6 +1366,13 @@ export default function MagicCarouselsApp() {
           userSelect: "none",
         }}
       >
+        {s.image && s.imageMode === "background" && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+            <img src={s.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(2px)" }} />
+          </div>
+        )}
+
         {/* Decoração vetorial */}
         {activeTemplate.decoration === "geometric-vector" && (
           <>
@@ -1358,8 +1466,16 @@ export default function MagicCarouselsApp() {
             </p>
           )}
 
-          {s.image && (
-            <div style={{ margin: "8px 0", borderRadius: "10px", overflow: "hidden", maxHeight: "105px" }}>
+          {s.image && s.imageMode === "avatar" && (
+            <div style={{ display: "flex", justifyContent: "center", margin: "10px 0" }}>
+              <div style={{ width: "74px", height: "74px", borderRadius: "50%", overflow: "hidden", border: `2.5px solid ${activeAccentColor}`, boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}>
+                <img src={s.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+            </div>
+          )}
+
+          {s.image && (!s.imageMode || s.imageMode === "card") && (
+            <div style={{ margin: "8px 0", borderRadius: "10px", overflow: "hidden", maxHeight: "125px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 14px rgba(0,0,0,0.3)" }}>
               <img src={s.image} alt="Ilustração" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
           )}
@@ -1635,19 +1751,19 @@ export default function MagicCarouselsApp() {
               🛠️ Criar do Zero
             </button>
             <button
-              onClick={() => setActiveTab("landing")}
+              onClick={() => setActiveTab("tutorials")}
               style={{
-                padding: "8px 12px",
+                padding: "8px 14px",
                 borderRadius: "9999px",
                 fontWeight: 700,
-                fontSize: "12px",
+                fontSize: "13px",
                 cursor: "pointer",
                 border: "none",
-                background: "transparent",
-                color: "#94a3b8",
+                background: activeTab === "tutorials" ? "var(--ig-sunset)" : "rgba(255, 255, 255, 0.04)",
+                color: "#ffffff",
               }}
             >
-              🚀 Vendas
+              🎓 Tutoriais & IA
             </button>
           </nav>
         )}
@@ -2399,16 +2515,54 @@ export default function MagicCarouselsApp() {
               ✕
             </button>
 
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginBottom: "16px" }}>
               <span style={{ fontSize: "11px", fontWeight: 800, color: "#f472b6", letterSpacing: "1px" }}>
-                IDENTIDADE VISUAL AUTOMÁTICA
+                SUA CONTA & IDENTIDADE
               </span>
               <h3 style={{ fontSize: "22px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
-                Perfil & Marca do Cliente
+                Perfil & Assinatura
               </h3>
-              <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "2px" }}>
-                As informações salvas aqui serão carregadas automaticamente em todos os seus carrosséis futuros.
-              </p>
+            </div>
+
+            {/* INFORMAÇÕES DA CONTA DO CLIENTE */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "16px",
+                padding: "16px",
+                marginBottom: "20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ fontSize: "11px", color: "#94a3b8", display: "block" }}>E-mail cadastrado</span>
+                  <strong style={{ fontSize: "13.5px", color: "#ffffff" }}>{user.email}</strong>
+                </div>
+                <div
+                  style={{
+                    background: user.plan === "LIFETIME" || isPaidLifetime ? "rgba(34, 197, 94, 0.15)" : "rgba(225, 48, 108, 0.15)",
+                    border: `1px solid ${user.plan === "LIFETIME" || isPaidLifetime ? "rgba(34, 197, 94, 0.4)" : "rgba(225, 48, 108, 0.4)"}`,
+                    color: user.plan === "LIFETIME" || isPaidLifetime ? "#4ade80" : "#f472b6",
+                    padding: "4px 12px",
+                    borderRadius: "9999px",
+                    fontSize: "11px",
+                    fontWeight: 800,
+                  }}
+                >
+                  {user.plan === "LIFETIME" || isPaidLifetime ? "⭐ Plano Vitalício PRO" : user.freeTrialsUsed === 0 ? "⏳ Teste Grátis (1/1)" : "⚠️ Teste Esgotado"}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "8px", fontSize: "12px", color: "#94a3b8" }}>
+                <span>Membro desde:</span>
+                <span style={{ color: "#e2e8f0", fontWeight: 600 }}>
+                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : "22 de Outubro de 2026"}
+                </span>
+              </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -2424,7 +2578,7 @@ export default function MagicCarouselsApp() {
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#ffffff", marginBottom: "4px" }}>
-                    Sua Foto Oficial de Perfil
+                    Foto de Perfil nos Carrosséis
                   </label>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <input type="file" accept="image/png,image/jpeg,image/webp" id="modal-avatar" onChange={handleAvatarUpload} style={{ display: "none" }} />
@@ -2491,7 +2645,25 @@ export default function MagicCarouselsApp() {
                 className="btn-primary-ig"
                 style={{ width: "100%", padding: "14px", borderRadius: "12px", marginTop: "8px" }}
               >
-                {profileSaving ? "Salvando..." : "💾 Salvar Informações do Perfil"}
+                {profileSaving ? "Salvando..." : "💾 Salvar Informações"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "10px",
+                  background: "transparent",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  color: "#ef4444",
+                  fontSize: "12.5px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🚪 Sair da Conta
               </button>
             </div>
           </div>
@@ -3491,39 +3663,107 @@ export default function MagicCarouselsApp() {
               </button>
             </div>
 
-            {user && user.plan === "FREE" && !isPaidLifetime && (
+            {user && user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime ? (
               <div
                 style={{
-                  background: "rgba(225, 48, 108, 0.12)",
-                  border: "1px solid rgba(225, 48, 108, 0.3)",
-                  borderRadius: "14px",
-                  padding: "12px 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: "10px",
+                  maxWidth: "760px",
+                  margin: "10px auto 30px auto",
+                  background: "linear-gradient(180deg, rgba(24, 24, 34, 0.95) 0%, rgba(18, 18, 24, 0.95) 100%)",
+                  border: "1px solid rgba(225, 48, 108, 0.35)",
+                  borderRadius: "24px",
+                  padding: "40px 28px",
+                  textAlign: "center",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(225, 48, 108, 0.15)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
-                  <span>⚡</span>
-                  <span>
-                    Você está no <strong>Plano de Teste Gratuito</strong>: {user.freeTrialsUsed === 0 ? "1 carrossel restante." : "0 carrosséis restantes (teste utilizado)."}
-                  </span>
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    borderRadius: "50%",
+                    background: "var(--ig-sunset)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "28px",
+                    margin: "0 auto 16px auto",
+                    boxShadow: "0 8px 24px rgba(225, 48, 108, 0.4)",
+                  }}
+                >
+                  🚀
                 </div>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#f472b6", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                  Teste Gratuito Utilizado com Sucesso
+                </span>
+                <h2 style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", marginTop: "8px", lineHeight: 1.3 }}>
+                  Desbloqueie o Magic Carousels Pro com Acesso Vitalício
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "14.5px", maxWidth: "560px", margin: "12px auto 24px auto", lineHeight: 1.6 }}>
+                  Você já criou seu 1º carrossel de teste gratuito! Para continuar criando carrosséis virais ilimitados, usar fotos estilo Canva, exportar em Ultra HD (PNG, ZIP, PDF) e acessar os 120+ modelos, ative seu plano vitalício sem mensalidades:
+                </p>
+
+                {/* BENEFÍCIOS */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px", textAlign: "left", margin: "0 auto 28px auto", maxWidth: "620px" }}>
+                  {[
+                    "Criação e edição de carrosséis ILIMITADOS",
+                    "Mais de 120 templates prontos de alta conversão",
+                    "Editor estilo Canva com upload de fotos nos slides",
+                    "Exportação Ultra HD em PNG, ZIP e PDF LinkedIn",
+                    "Gerador de Legendas Magnéticas & Hashtags virais",
+                    "Acesso Vitalício: Sem mensalidades (Pagamento Único)",
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.04)", padding: "10px 14px", borderRadius: "10px", fontSize: "13px", color: "#e2e8f0" }}>
+                      <span style={{ color: "#22c55e", fontWeight: 900 }}>✓</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* PREÇO E CTA */}
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "18px", maxWidth: "420px", margin: "0 auto 24px auto" }}>
+                  <div style={{ fontSize: "12px", color: "#94a3b8", textDecoration: "line-through" }}>De R$ 197,00 por apenas</div>
+                  <div style={{ fontSize: "36px", fontWeight: 900, color: "#ffffff", margin: "4px 0" }}>
+                    {scarcityTier.priceFormatted}
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#22c55e", marginLeft: "8px" }}>Pagamento Único</span>
+                  </div>
+                  <div style={{ fontSize: "11.5px", color: "#f472b6", fontWeight: 700 }}>
+                    ⚡ Oferta Promocional ({scarcityTier.name})
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setActiveTab("checkout")}
+                  onClick={handleStartCheckout}
                   className="btn-primary-ig"
-                  style={{ padding: "6px 14px", fontSize: "12px" }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "10px", padding: "16px 36px", fontSize: "16px", borderRadius: "14px", fontWeight: 900, cursor: "pointer", border: "none", boxShadow: "0 10px 30px rgba(225, 48, 108, 0.4)" }}
                 >
-                  Liberar Vitalício por {scarcityTier.priceFormatted}
+                  <span>DESBLOQUEAR ACESSO VITALÍCIO AGORA ⚡</span>
                 </button>
-              </div>
-            )}
 
-            <div className="creator-split-grid">
-              {/* COLUNA ESQUERDA: CONTROLES DE IA, NICHO, TEMPLATES NICHADOS E EDIÇÃO */}
+                <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", fontSize: "12px", color: "#64748b" }}>
+                  <span>🔒 Pagamento 100% Seguro</span>
+                  <span>•</span>
+                  <span>🛡️ 7 Dias de Garantia Incondicional</span>
+                  <span>•</span>
+                  <span>⚡ Acesso Imediato</span>
+                </div>
+
+                <div style={{ marginTop: "24px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("projects")}
+                    style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "13px", cursor: "pointer", textDecoration: "underline", fontWeight: 700 }}
+                  >
+                    Ver meu carrossel anterior salvo na aba Meus Projetos →
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {!(user && user.plan === "FREE" && user.freeTrialsUsed >= 1 && !isPaidLifetime) && (
+              <>
+              <div className="creator-split-grid">
+              {/* COLUNA ESQUERDA: ESTÚDIO GUIADO DE 3 PASSOS E EDIÇÃO */}
               <div
                 style={{
                   display: mobileViewMode === "edit" || typeof window !== "undefined" && window.innerWidth >= 1024 ? "flex" : "none",
@@ -3537,190 +3777,364 @@ export default function MagicCarouselsApp() {
                     border: "1px solid rgba(255, 255, 255, 0.08)",
                     borderRadius: "24px",
                     padding: "24px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "20px",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                    <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#ffffff" }}>
-                      ⚡ Estúdio de Conteúdo
-                    </h2>
-                    <span style={{ fontSize: "11px", color: "#f472b6", fontWeight: 700 }}>
-                      Template: {activeTemplate.name}
+                  {/* CABEÇALHO DO ESTÚDIO */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "14px" }}>
+                    <div>
+                      <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#ffffff" }}>
+                        ⚡ Estúdio Guiado de Conteúdo
+                      </h2>
+                      <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                        Siga os 3 passos simples para gerar seu post viral
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "11px", color: "#f472b6", fontWeight: 700, background: "rgba(225,48,108,0.12)", padding: "4px 10px", borderRadius: "9999px" }}>
+                      {activeTemplate.name}
                     </span>
                   </div>
 
-                  {/* BANNER DE ECONOMIA DE TEMPO E DINHEIRO */}
-                  <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "10px 14px", borderRadius: "12px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "16px" }}>💡</span>
-                    <span style={{ fontSize: "11.5px", color: "#86efac", lineHeight: 1.4 }}>
-                      <strong>Economia e Agilidade:</strong> Crie com <strong>IA Local</strong> (sem gastar tokens) ou copie o <strong>Super Prompt</strong> pronto para o ChatGPT/Claude.
-                    </span>
-                  </div>
-
-                  {/* SELETOR DE TEMPLATES NICHADOS RÁPIDOS */}
-                  <div style={{ marginBottom: "18px", background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: 800, color: "#ffffff" }}>
-                        📂 Escolher Template por Profissão ({allTemplates.length} disponíveis)
-                      </label>
+                  {/* ======================================================== */}
+                  {/* PASSO 1: ESCOLHA O ESTILO VISUAL DO CARROSSEL            */}
+                  {/* ======================================================== */}
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "22px", height: "22px", borderRadius: "50%", background: "var(--ig-sunset)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 900 }}>1</span>
+                        <label style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
+                          Escolha o Estilo Visual
+                        </label>
+                      </div>
                       <button
                         type="button"
                         onClick={() => setActiveTab("templates")}
                         style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "11.5px", cursor: "pointer", fontWeight: 700 }}
                       >
-                        Ver todos →
+                        Ver todos ({allTemplates.length}) →
                       </button>
                     </div>
-                    <select
-                      className="studio-input"
-                      value={currentTemplateId}
-                      onChange={(e) => {
-                        setCurrentTemplateId(e.target.value);
-                        setCustomBgColor("");
-                        setCustomTextColor("");
-                        setCustomAccentColor("");
-                      }}
-                    >
-                      {TEMPLATE_CATEGORIES.filter((c) => c !== "Todos").map((cat) => (
-                        <optgroup key={cat} label={`── ${cat} ──`} style={{ background: "#121218", color: "#f472b6" }}>
-                          {allTemplates.filter((t) => t.category === cat).map((t) => (
-                            <option key={t.id} value={t.id} style={{ background: "#181824", color: "#ffffff" }}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </optgroup>
+
+                    {/* FILTROS POR CATEGORIA EM CHIPS */}
+                    <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "8px", marginBottom: "12px" }}>
+                      {TEMPLATE_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setWizardTemplateCategory(cat)}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: "9999px",
+                            border: "none",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            cursor: "pointer",
+                            background: wizardTemplateCategory === cat ? "var(--ig-sunset)" : "rgba(255,255,255,0.06)",
+                            color: "#ffffff",
+                          }}
+                        >
+                          {cat}
+                        </button>
                       ))}
-                    </select>
-                  </div>
+                    </div>
 
-                  <div style={{ display: "flex", gap: "6px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "12px", marginBottom: "18px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setMode("direct")}
+                    {/* CARDS VISUAIS DOS TEMPLATES (MINIATURAS REAIS COM CORES E TIPOGRAFIA) */}
+                    <div
                       style={{
-                        flex: 1,
-                        padding: "8px",
-                        borderRadius: "8px",
-                        border: "none",
-                        fontWeight: 700,
-                        fontSize: "12px",
-                        cursor: "pointer",
-                        background: mode === "direct" ? "rgba(255,255,255,0.12)" : "transparent",
-                        color: mode === "direct" ? "#ffffff" : "#94a3b8",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                        gap: "10px",
+                        maxHeight: "180px",
+                        overflowY: "auto",
+                        padding: "4px",
+                        borderRadius: "12px",
                       }}
                     >
-                      ⚡ IA Local (Zero Custo)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode("magic-prompt")}
-                      style={{
-                        flex: 1,
-                        padding: "8px",
-                        borderRadius: "8px",
-                        border: "none",
-                        fontWeight: 700,
-                        fontSize: "12px",
-                        cursor: "pointer",
-                        background: mode === "magic-prompt" ? "rgba(255,255,255,0.12)" : "transparent",
-                        color: mode === "magic-prompt" ? "#ffffff" : "#94a3b8",
-                      }}
-                    >
-                      🤖 Prompt p/ ChatGPT & Claude
-                    </button>
-                  </div>
+                      {allTemplates
+                        .filter((t) => wizardTemplateCategory === "Todos" || t.category === wizardTemplateCategory)
+                        .slice(0, 18)
+                        .map((tpl) => {
+                          const isSelected = currentTemplateId === tpl.id;
+                          return (
+                            <div
+                              key={tpl.id}
+                              onClick={() => {
+                                setCurrentTemplateId(tpl.id);
+                                setCustomBgColor("");
+                                setCustomTextColor("");
+                                setCustomAccentColor("");
+                              }}
+                              style={{
+                                background: tpl.colors.bg,
+                                color: tpl.colors.text,
+                                border: isSelected ? "2px solid #e1306c" : "1px solid rgba(255,255,255,0.12)",
+                                boxShadow: isSelected ? "0 0 16px rgba(225, 48, 108, 0.45)" : "none",
+                                borderRadius: "10px",
+                                padding: "8px 10px",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
+                                height: "82px",
+                                position: "relative",
+                              }}
+                            >
+                              {isSelected && (
+                                <span style={{ position: "absolute", top: "4px", right: "6px", fontSize: "10px", background: "#e1306c", color: "#fff", borderRadius: "50%", width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
+                                  ✓
+                                </span>
+                              )}
+                              <div style={{ height: "3px", width: "24px", background: tpl.colors.accent, borderRadius: "2px", marginBottom: "4px" }} />
+                              <div style={{ fontSize: "11px", fontWeight: 900, lineHeight: 1.2, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                                {tpl.name}
+                              </div>
+                              <div style={{ fontSize: "9px", opacity: 0.7, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                                {tpl.category}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                        Assunto ou Ideia do Post
-                      </label>
-                      <input
-                        type="text"
+                    {/* SELECT COMPACTO PARA ESCOLHER QUALQUER UM DIRETO */}
+                    <div style={{ marginTop: "10px" }}>
+                      <select
                         className="studio-input"
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        placeholder="Ex: Como negociar salário, 5 alimentos anti-inflamatórios..."
-                      />
+                        value={currentTemplateId}
+                        onChange={(e) => {
+                          setCurrentTemplateId(e.target.value);
+                          setCustomBgColor("");
+                          setCustomTextColor("");
+                          setCustomAccentColor("");
+                        }}
+                        style={{ fontSize: "12px", padding: "6px 10px" }}
+                      >
+                        {TEMPLATE_CATEGORIES.filter((c) => c !== "Todos").map((cat) => (
+                          <optgroup key={cat} label={`── ${cat} ──`} style={{ background: "#121218", color: "#f472b6" }}>
+                            {allTemplates.filter((t) => t.category === cat).map((t) => (
+                              <option key={t.id} value={t.id} style={{ background: "#181824", color: "#ffffff" }}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* ======================================================== */}
+                  {/* PASSO 2: ASSUNTO & NICHO DO POST                         */}
+                  {/* ======================================================== */}
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                      <span style={{ width: "22px", height: "22px", borderRadius: "50%", background: "var(--ig-sunset)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 900 }}>2</span>
+                      <label style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
+                        Defina o Assunto & Nicho
+                      </label>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                          Profissão / Nicho
-                        </label>
-                        <select
-                          className="studio-input"
-                          value={selectedNiche}
-                          onChange={(e) => setSelectedNiche(e.target.value)}
-                        >
-                          {NICHES.map((n) => (
-                            <option key={n.id} value={n.id} style={{ background: "#181824", color: "#ffffff" }}>
-                              {n.emoji} {n.name}
-                            </option>
-                          ))}
-                        </select>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                            Profissão / Nicho
+                          </label>
+                          <select
+                            className="studio-input"
+                            value={selectedNiche}
+                            onChange={(e) => setSelectedNiche(e.target.value)}
+                          >
+                            {NICHES.map((n) => (
+                              <option key={n.id} value={n.id} style={{ background: "#181824", color: "#ffffff" }}>
+                                {n.emoji} {n.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                            Tom de Voz
+                          </label>
+                          <select
+                            className="studio-input"
+                            value={selectedTone}
+                            onChange={(e) => setSelectedTone(e.target.value)}
+                          >
+                            {TONE_OPTIONS.map((t) => (
+                              <option key={t.id} value={t.id} style={{ background: "#181824", color: "#ffffff" }}>
+                                {t.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
                       <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                          Tom de Voz
-                        </label>
-                        <select
-                          className="studio-input"
-                          value={selectedTone}
-                          onChange={(e) => setSelectedTone(e.target.value)}
-                        >
-                          {TONE_OPTIONS.map((t) => (
-                            <option key={t.id} value={t.id} style={{ background: "#181824", color: "#ffffff" }}>
-                              {t.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                          Seu @ do Instagram
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                          Tema ou Ideia do Post
                         </label>
                         <input
                           type="text"
                           className="studio-input"
-                          value={handle}
-                          onChange={(e) => setHandle(e.target.value.replace("@", ""))}
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          placeholder="Ex: Como negociar salário, 5 alimentos anti-inflamatórios..."
                         />
                       </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px" }}>
-                          Lâminas ({slideCount} slides)
-                        </label>
-                        <input
-                          type="range"
-                          min={5}
-                          max={10}
-                          value={slideCount}
-                          onChange={(e) => setSlideCount(Number(e.target.value))}
-                          style={{ marginTop: "12px" }}
-                        />
+
+                      {/* SUGESTÕES RÁPIDAS CLICÁVEIS */}
+                      {NICHE_SUGGESTIONS[selectedNiche] && (
+                        <div>
+                          <span style={{ fontSize: "10.5px", color: "#64748b", display: "block", marginBottom: "6px" }}>
+                            💡 Ideias virais prontas para {selectedNiche} (clique para usar):
+                          </span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {NICHE_SUGGESTIONS[selectedNiche].map((sug, sIdx) => (
+                              <button
+                                key={sIdx}
+                                type="button"
+                                onClick={() => setTopic(sug)}
+                                style={{
+                                  background: topic === sug ? "rgba(225,48,108,0.15)" : "rgba(255,255,255,0.03)",
+                                  border: topic === sug ? "1px solid rgba(225,48,108,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                                  color: topic === sug ? "#f472b6" : "#cbd5e1",
+                                  padding: "5px 10px",
+                                  borderRadius: "6px",
+                                  fontSize: "11px",
+                                  textAlign: "left",
+                                  cursor: "pointer",
+                                  transition: "all 0.15s ease",
+                                }}
+                              >
+                                ⚡ {sug}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                            Seu @ no Instagram
+                          </label>
+                          <input
+                            type="text"
+                            className="studio-input"
+                            value={handle}
+                            onChange={(e) => setHandle(e.target.value.replace("@", ""))}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
+                            Lâminas ({slideCount} slides)
+                          </label>
+                          <input
+                            type="range"
+                            min={5}
+                            max={10}
+                            value={slideCount}
+                            onChange={(e) => setSlideCount(Number(e.target.value))}
+                            style={{ marginTop: "10px" }}
+                          />
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    {mode === "direct" && (
+                  {/* ======================================================== */}
+                  {/* PASSO 3: MODO DE CRIAÇÃO (MODELOS PRONTOS | PROMPT | IA) */}
+                  {/* ======================================================== */}
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                      <span style={{ width: "22px", height: "22px", borderRadius: "50%", background: "var(--ig-sunset)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 900 }}>3</span>
+                      <label style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
+                        Modo de Criação
+                      </label>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "10px", marginBottom: "14px" }}>
                       <button
                         type="button"
-                        onClick={() => generateDirect(false)}
-                        disabled={isGenerating}
-                        className="btn-primary-ig"
-                        style={{ width: "100%", padding: "14px", fontSize: "15px", borderRadius: "12px" }}
+                        onClick={() => setMode("direct")}
+                        style={{
+                          padding: "8px 4px",
+                          borderRadius: "8px",
+                          border: "none",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          background: mode === "direct" ? "rgba(255,255,255,0.12)" : "transparent",
+                          color: mode === "direct" ? "#ffffff" : "#94a3b8",
+                          textAlign: "center",
+                        }}
                       >
-                        {isGenerating ? "✨ Gerando Carrossel..." : "✨ Criar Carrossel Agora"}
+                        ⚡ 1 Clique
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setMode("magic-prompt")}
+                        style={{
+                          padding: "8px 4px",
+                          borderRadius: "8px",
+                          border: "none",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          background: mode === "magic-prompt" ? "rgba(255,255,255,0.12)" : "transparent",
+                          color: mode === "magic-prompt" ? "#ffffff" : "#94a3b8",
+                          textAlign: "center",
+                        }}
+                      >
+                        🤖 Prompt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMode("api-key")}
+                        style={{
+                          padding: "8px 4px",
+                          borderRadius: "8px",
+                          border: "none",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          background: mode === "api-key" ? "rgba(255,255,255,0.12)" : "transparent",
+                          color: mode === "api-key" ? "#ffffff" : "#94a3b8",
+                          textAlign: "center",
+                        }}
+                      >
+                        🔑 IA Direta
+                      </button>
+                    </div>
+
+                    {/* MODO 1: MODELO ESTRUTURADO RÁPIDO */}
+                    {mode === "direct" && (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => generateDirect(false)}
+                          disabled={isGenerating}
+                          className="btn-primary-ig"
+                          style={{ width: "100%", padding: "14px", fontSize: "14px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                        >
+                          <span>{isGenerating ? "⏳" : "✨"}</span>
+                          <span>{isGenerating ? "Gerando Carrossel..." : "Criar Carrossel em 1 Clique"}</span>
+                        </button>
+                        <span style={{ display: "block", textAlign: "center", fontSize: "11px", color: "#86efac", marginTop: "8px" }}>
+                          ✓ Sem custo de tokens • Conteúdo estruturado para {selectedNiche}
+                        </span>
+                      </div>
                     )}
 
+                    {/* MODO 2: SUPER PROMPT CHATGPT / CLAUDE */}
                     {mode === "magic-prompt" && (
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ fontSize: "12px", fontWeight: 800, color: "#38bdf8" }}>
                             1. Copie o prompt pronto:
                           </span>
@@ -3748,34 +4162,68 @@ export default function MagicCarouselsApp() {
                             borderRadius: "8px",
                             fontSize: "11px",
                             color: "#94a3b8",
-                            maxHeight: "90px",
+                            maxHeight: "85px",
                             overflowY: "auto",
                             whiteSpace: "pre-wrap",
-                            marginBottom: "10px",
                           }}
                         >
                           {generatedPrompt}
                         </pre>
-                        <span style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#38bdf8", marginBottom: "4px" }}>
-                          2. Cole a resposta da IA aqui:
+
+                        <span style={{ fontSize: "12px", fontWeight: 800, color: "#38bdf8" }}>
+                          2. Cole a resposta do ChatGPT ou Claude:
                         </span>
                         <textarea
-                          rows={2}
+                          rows={3}
                           className="studio-input"
                           value={aiPastedText}
                           onChange={(e) => setAiPastedText(e.target.value)}
-                          placeholder="Cole aqui o texto gerado pelo ChatGPT ou Claude..."
-                          style={{ marginBottom: "8px" }}
+                          placeholder="Cole aqui o texto retornado pelo ChatGPT ou Claude..."
                         />
-                        {parseError && <div style={{ color: "#ef4444", fontSize: "11.5px", fontWeight: 700, marginBottom: "8px" }}>⚠️ {parseError}</div>}
+                        {parseError && <div style={{ color: "#ef4444", fontSize: "11.5px", fontWeight: 700 }}>⚠️ {parseError}</div>}
                         <button
                           type="button"
                           onClick={handleProcessAiText}
                           className="btn-primary-ig"
-                          style={{ width: "100%", padding: "10px", fontSize: "13px" }}
+                          style={{ width: "100%", padding: "12px", fontSize: "13px" }}
                         >
                           🚀 Transformar em Carrossel
                         </button>
+                      </div>
+                    )}
+
+                    {/* MODO 3: IA DIRETA VIA CHAVE DO USUÁRIO */}
+                    {mode === "api-key" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {userApiKey ? (
+                          <>
+                            <div style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "10px", borderRadius: "10px", fontSize: "12px", color: "#86efac" }}>
+                              ✓ Chave do <strong>{userAiProvider.toUpperCase()}</strong> conectada no seu navegador!
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => generateDirect(false)}
+                              disabled={isGenerating}
+                              className="btn-primary-ig"
+                              style={{ width: "100%", padding: "14px", fontSize: "14px", borderRadius: "12px" }}
+                            >
+                              {isGenerating ? "✨ Gerando com IA..." : "✨ Gerar com Minha Chave de IA"}
+                            </button>
+                          </>
+                        ) : (
+                          <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.25)", padding: "12px", borderRadius: "12px", textAlign: "center" }}>
+                            <p style={{ fontSize: "12px", color: "#e2e8f0", marginBottom: "8px" }}>
+                              Você ainda não salvou sua chave do Google Gemini (grátis) ou OpenAI.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab("tutorials")}
+                              style={{ background: "var(--ig-sunset)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, cursor: "pointer" }}
+                            >
+                              🎓 Abrir Tutorial & Salvar Chave Grátis →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3839,37 +4287,69 @@ export default function MagicCarouselsApp() {
 
                       <div>
                         <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "4px" }}>
-                          🖼️ Imagem Ilustrativa Nesta Lâmina
+                          🖼️ Foto / Imagem Nesta Lâmina (Estilo Canva)
                         </label>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <input type="file" accept="image/png,image/jpeg,image/webp" id={`slide-img-${activeSlideIndex}`} onChange={handleSlideImageUpload} style={{ display: "none" }} />
-                          <label
-                            htmlFor={`slide-img-${activeSlideIndex}`}
-                            style={{
-                              background: "rgba(255,255,255,0.08)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              color: "#ffffff",
-                              padding: "6px 12px",
-                              borderRadius: "8px",
-                              fontSize: "12px",
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {slides[activeSlideIndex].image ? "Trocar Imagem" : "Adicionar Imagem"}
-                          </label>
-                          {slides[activeSlideIndex].image && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...slides];
-                                updated[activeSlideIndex].image = undefined;
-                                setSlides(updated);
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <input type="file" accept="image/png,image/jpeg,image/webp" id={`slide-img-${activeSlideIndex}`} onChange={handleSlideImageUpload} style={{ display: "none" }} />
+                            <label
+                              htmlFor={`slide-img-${activeSlideIndex}`}
+                              style={{
+                                background: "rgba(255,255,255,0.08)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                color: "#ffffff",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                cursor: "pointer",
                               }}
-                              style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}
                             >
-                              ✕ Remover
-                            </button>
+                              {slides[activeSlideIndex].image ? "📷 Trocar Foto" : "📷 Subir Foto"}
+                            </label>
+                            {slides[activeSlideIndex].image && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...slides];
+                                  updated[activeSlideIndex].image = undefined;
+                                  updated[activeSlideIndex].imageMode = undefined;
+                                  setSlides(updated);
+                                }}
+                                style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}
+                              >
+                                ✕ Remover Foto
+                              </button>
+                            )}
+                          </div>
+
+                          {slides[activeSlideIndex].image && (
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                              <span style={{ fontSize: "11px", color: "#94a3b8" }}>Posição:</span>
+                              {(["card", "background", "avatar"] as const).map((m) => (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...slides];
+                                    updated[activeSlideIndex].imageMode = m;
+                                    setSlides(updated);
+                                  }}
+                                  style={{
+                                    padding: "4px 8px",
+                                    borderRadius: "6px",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    border: "none",
+                                    background: (slides[activeSlideIndex].imageMode || "card") === m ? "var(--ig-sunset)" : "rgba(255,255,255,0.06)",
+                                    color: "#ffffff",
+                                  }}
+                                >
+                                  {m === "card" ? "🖼️ Card" : m === "background" ? "🌌 Fundo" : "👤 Avatar"}
+                                </button>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -4019,7 +4499,7 @@ export default function MagicCarouselsApp() {
                   </button>
                 </div>
 
-                <div className="iphone-frame">
+                <div className={`iphone-frame fmt-${format.replace(":", "-")}`}>
                   <div className="iphone-island">
                     <div className="iphone-island-cam" />
                   </div>
@@ -4046,14 +4526,23 @@ export default function MagicCarouselsApp() {
                         </div>
                         <div>
                           <span style={{ fontSize: "12px", fontWeight: 800, color: "#0f172a" }}>{handle}</span>
-                          <span style={{ display: "block", fontSize: "9px", color: "#64748b" }}>{activeTemplate.name}</span>
+                          <span style={{ display: "block", fontSize: "9px", color: "#64748b" }}>{activeTemplate.name} • {format}</span>
                         </div>
                       </div>
                       <span style={{ fontSize: "18px", color: "#64748b", fontWeight: 900 }}>···</span>
                     </div>
 
-                    {/* CONTAINER DO CARROSSEL 100% DESLIZÁVEL IGUAL AO INSTAGRAM */}
-                    <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                    {/* CONTAINER DO CARROSSEL 100% DESLIZÁVEL ADAPTÁVEL AO FORMATO */}
+                    <div
+                      style={{
+                        width: "100%",
+                        aspectRatio: format === "1:1" ? "1 / 1" : format === "9:16" ? "9 / 16" : format === "3:4" ? "3 / 4" : "4 / 5",
+                        maxHeight: format === "9:16" ? "540px" : format === "3:4" ? "480px" : format === "1:1" ? "360px" : "450px",
+                        position: "relative",
+                        overflow: "hidden",
+                        transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                      }}
+                    >
                       {/* SETAS FLUTUANTES ESTILO INSTAGRAM WEB */}
                       {activeSlideIndex > 0 && (
                         <button
@@ -4221,7 +4710,8 @@ export default function MagicCarouselsApp() {
               </div>
             </div>
 
-            {/* SEÇÃO: LEGENDA & HASHTAGS ESTRATÉGICAS PRONTAS (COPIAR & COLAR EM 1 CLIQUE) */}
+            {/* SEÇÃO: LEGENDA & HASHTAGS ESTRATÉGICAS PRONTAS (EXIBIDA NO MODO PROMPT CHATGPT/CLAUDE) */}
+            {mode === "magic-prompt" && (
             <div
               style={{
                 background: "linear-gradient(180deg, rgba(18, 18, 24, 0.95) 0%, rgba(10, 10, 14, 0.98) 100%)",
@@ -4368,6 +4858,9 @@ export default function MagicCarouselsApp() {
                 </div>
               </div>
             </div>
+            )}
+            </>
+            )}
           </div>
         )}
 
@@ -5575,6 +6068,192 @@ export default function MagicCarouselsApp() {
                 >
                   💾 Salvar Este Template & Começar a Criar
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ABA 6: TUTORIAIS & CONEXÃO DE IA (TERMOS LEIGOS E LINKS DIRETOS) */}
+        {activeTab === "tutorials" && (
+          <div style={{ maxWidth: "860px", margin: "20px auto", display: "flex", flexDirection: "column", gap: "28px", padding: "0 14px" }}>
+            <div>
+              <span style={{ fontSize: "12px", fontWeight: 800, color: "#38bdf8", letterSpacing: "1px" }}>
+                GUIA PRÁTICO DESCOMPLICADO
+              </span>
+              <h2 style={{ fontSize: "30px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
+                Como Criar Conteúdos com Inteligência Artificial
+              </h2>
+              <p style={{ color: "#94a3b8", fontSize: "14.5px" }}>
+                Você tem 2 formas super simples para criar os textos dos seus carrosséis: 100% grátis com o Super Prompt ou automática conectando sua chave.
+              </p>
+            </div>
+
+            {/* OPÇÃO 1: SUPER PROMPT (100% GRÁTIS) */}
+            <div style={{ background: "rgba(18, 18, 24, 0.8)", border: "1px solid rgba(56, 189, 248, 0.3)", borderRadius: "24px", padding: "28px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                <span style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", padding: "4px 10px", borderRadius: "9999px", fontSize: "12px", fontWeight: 800 }}>
+                  OPÇÃO 1 • 100% GRÁTIS
+                </span>
+                <h3 style={{ fontSize: "19px", fontWeight: 900, color: "#ffffff" }}>
+                  Super Prompt (Usar no ChatGPT ou Claude sem gastar nada)
+                </h3>
+              </div>
+              <p style={{ color: "#cbd5e1", fontSize: "13.5px", lineHeight: 1.6, marginBottom: "16px" }}>
+                Essa é a forma mais recomendada para quem está começando: você não precisa cadastrar cartão nem gerar chaves técnicas.
+              </p>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "20px", marginBottom: "6px" }}>1️⃣</div>
+                  <strong style={{ fontSize: "13px", color: "#ffffff", display: "block" }}>Copie o Prompt</strong>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>No estúdio, escolha o modo "Prompt p/ ChatGPT" e clique em Copiar.</span>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "20px", marginBottom: "6px" }}>2️⃣</div>
+                  <strong style={{ fontSize: "13px", color: "#ffffff", display: "block" }}>Cole no ChatGPT</strong>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>Abra o ChatGPT ou Claude gratuito e envie o texto copiado.</span>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "20px", marginBottom: "6px" }}>3️⃣</div>
+                  <strong style={{ fontSize: "13px", color: "#ffffff", display: "block" }}>Cole de Volta no App</strong>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>Cole a resposta no campo do estúdio e todos os slides são preenchidos na hora!</span>
+                </div>
+              </div>
+            </div>
+
+            {/* OPÇÃO 2: CONECTAR CHAVE DE IA (GERAÇÃO COM 1 CLIQUE) */}
+            <div style={{ background: "rgba(18, 18, 24, 0.8)", border: "1px solid rgba(225, 48, 108, 0.3)", borderRadius: "24px", padding: "28px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                <span style={{ background: "rgba(225, 48, 108, 0.15)", color: "#f472b6", padding: "4px 10px", borderRadius: "9999px", fontSize: "12px", fontWeight: 800 }}>
+                  OPÇÃO 2 • AUTOMAÇÃO COM 1 CLIQUE
+                </span>
+                <h3 style={{ fontSize: "19px", fontWeight: 900, color: "#ffffff" }}>
+                  Conectar sua Chave de IA (Geração Direta no App)
+                </h3>
+              </div>
+              <p style={{ color: "#cbd5e1", fontSize: "13.5px", lineHeight: 1.6, marginBottom: "16px" }}>
+                Para quem quer gerar textos com apenas 1 clique direto no botão <em>"Criar Carrossel Agora"</em>. O Google Gemini é gratuito e super rápido!
+              </p>
+
+              {/* CARDS COM LINKS DIRETOS PARA OBTER AS CHAVES */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px", marginBottom: "22px" }}>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>Google Gemini (Grátis)</strong>
+                    <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#22c55e", fontWeight: 700 }}>Recomendado • Gratuito pelo Google</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Clique aqui, faça login com sua conta Google e clique em "Create API key".</p>
+                </a>
+
+                <a
+                  href="https://platform.openai.com/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>ChatGPT / OpenAI</strong>
+                    <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#a855f7", fontWeight: 700 }}>Modelos GPT-4o e mini</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Clique aqui para acessar o painel de desenvolvedor da OpenAI e gerar sua chave.</p>
+                </a>
+
+                <a
+                  href="https://openrouter.ai/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "6px", transition: "all 0.15s ease" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ color: "#ffffff", fontSize: "14px" }}>OpenRouter</strong>
+                    <span style={{ color: "#38bdf8", fontSize: "12px" }}>↗</span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 700 }}>Modelos diversos e gratuitos</span>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Permite usar vários modelos abertos como LLaMA, Claude e Mistral.</p>
+                </a>
+              </div>
+
+              {/* FORMULÁRIO SEGURO PARA SALVAR A CHAVE */}
+              <div style={{ background: "rgba(0,0,0,0.35)", padding: "18px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <span style={{ display: "block", fontSize: "13px", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>
+                  🔑 Salve sua Chave de IA Aqui:
+                </span>
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px", marginBottom: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>Provedor</label>
+                    <select
+                      className="studio-input"
+                      value={userAiProvider}
+                      onChange={(e) => {
+                        const p = e.target.value as any;
+                        setUserAiProvider(p);
+                        if (typeof window !== "undefined") localStorage.setItem("mc_user_ai_provider", p);
+                      }}
+                    >
+                      <option value="gemini">Google Gemini</option>
+                      <option value="openai">OpenAI (ChatGPT)</option>
+                      <option value="openrouter">OpenRouter</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", marginBottom: "4px" }}>Chave de API (Cole aqui)</label>
+                    <input
+                      type="password"
+                      className="studio-input"
+                      value={userApiKey}
+                      onChange={(e) => {
+                        setUserApiKey(e.target.value);
+                        setAiKeyStatus("");
+                      }}
+                      placeholder={userAiProvider === "gemini" ? "AIzaSy..." : "sk-..."}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("mc_user_ai_key", userApiKey.trim());
+                        localStorage.setItem("mc_user_ai_provider", userAiProvider);
+                        setAiKeyStatus("✓ Chave salva com sucesso no seu navegador! Agora você pode gerar com 1 clique.");
+                      }
+                    }}
+                    className="btn-primary-ig"
+                    style={{ padding: "8px 18px", fontSize: "12.5px" }}
+                  >
+                    💾 Salvar Chave
+                  </button>
+
+                  {userApiKey && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserApiKey("");
+                        if (typeof window !== "undefined") localStorage.removeItem("mc_user_ai_key");
+                        setAiKeyStatus("Chave removida.");
+                      }}
+                      style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}
+                    >
+                      ✕ Remover Chave
+                    </button>
+                  )}
+                  {aiKeyStatus && (
+                    <span style={{ fontSize: "12px", color: aiKeyStatus.startsWith("✓") ? "#4ade80" : "#94a3b8", fontWeight: 700 }}>
+                      {aiKeyStatus}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
